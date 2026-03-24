@@ -1,10 +1,47 @@
-<!DOCTYPE html>
+index.html<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>打卡稽核系統</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc }
+    from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCMnHuSPNX8kJC53eYgWHXUV4BQjXhM7uo",
+    authDomain: "derlife-audit.firebaseapp.com",
+    projectId: "derlife-audit",
+    storageBucket: "derlife-audit.firebasestorage.app",
+    messagingSenderId: "992417419976",
+    appId: "1:992417419976:web:8b44d06620ca2e8cd5cbfd",
+    measurementId: "G-S50ZTYCRVZ"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // expose to global scope for non-module scripts
+  window._fb = { auth, db, GoogleAuthProvider, signInWithPopup, signOut,
+    onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, deleteDoc };
+
+  // Firebase auth state listener
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      window._fbUser = user;
+      if (typeof window.onFirebaseLogin === 'function') window.onFirebaseLogin(user);
+    } else {
+      window._fbUser = null;
+      if (typeof window.onFirebaseLogout === 'function') window.onFirebaseLogout();
+    }
+  });
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 :root {
@@ -235,38 +272,17 @@ tr.rm:hover td{background:#fff3ec}
     <div class="login-logo">📋</div>
     <div class="login-title">打卡稽核系統</div>
     <div class="login-sub">此系統僅限授權人員使用<br>請使用公司 Google 帳號登入</div>
-
-    <!-- Client ID 設定（可收合） -->
-    <div style="margin-bottom:20px;text-align:left">
-      <button onclick="toggleClientSection()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Noto Sans TC',sans-serif;display:flex;align-items:center;gap:5px;padding:0" id="clientIdToggle">
-        ⚙️ Google Client ID 設定 <span id="clientIdArrow" style="font-size:10px">▶</span>
-      </button>
-      <div id="clientIdSection" style="display:none;margin-top:10px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-          請至 <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent)">Google Cloud Console</a> 取得 OAuth 2.0 用戶端 ID<br>
-          類型：<strong>網頁應用程式</strong>｜授權來源：<strong>此頁面的網址</strong>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input class="emp-input" id="clientIdInput" placeholder="貼上 Client ID（xxxx.apps.googleusercontent.com）" style="flex:1;font-size:11px;font-family:'JetBrains Mono',monospace;padding:7px 10px" oninput="G('clientIdSaved').textContent=''">
-          <button class="btn btn-p" onclick="saveClientId()" style="font-size:11px;padding:7px 12px;white-space:nowrap">儲存</button>
-          <span id="clientIdSaved" style="font-size:11px;color:var(--green);white-space:nowrap"></span>
-        </div>
-      </div>
-    </div>
-
-    <button class="login-google-btn" id="loginBtn" onclick="startGoogleLogin()">
-      <svg class="login-google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    <button class="login-google-btn" id="loginBtn" onclick="doGoogleLogin()">
+      <svg class="login-google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
       使用 Google 帳號登入
     </button>
-
-    <!-- GSI renders button here when One Tap is blocked -->
-    <div id="gsi_btn_wrap" style="display:flex;justify-content:center;margin-top:10px;min-height:44px"></div>
-
     <div class="login-status" id="loginStatus"></div>
-    <div class="login-footer">
-      登入即表示您同意此系統僅作人資稽核用途<br>
-      如需申請使用權限，請聯絡系統管理員
-    </div>
+    <div class="login-footer">登入即表示您同意此系統僅作人資稽核用途<br>如需申請使用權限，請聯絡系統管理員</div>
   </div>
 </div>
 
@@ -278,7 +294,7 @@ tr.rm:hover td{background:#fff3ec}
   <div class="hdr-btns">
     <button class="hdr-btn" id="hdrEmpBtn" onclick="openEmpModal()">👥 員工資料庫 <span id="empCount" style="font-family:'JetBrains Mono',monospace;font-size:11px"></span></button>
     <button class="hdr-btn" onclick="openTplModal()">✉️ Email 模板設定</button>
-    <button class="hdr-btn" id="wlBtn" onclick="openWlModal()" style="display:none">🔐 權限管理</button>
+    <button class="hdr-btn" id="wlBtn" onclick="openWlModal()" style="display:none">🔐 登入權限管理</button>
     <div class="user-badge" id="userBadge" style="display:none">
       <div class="user-avatar" id="userAvatarTxt"></div>
       <span id="userEmailTxt"></span>
@@ -518,36 +534,32 @@ tr.rm:hover td{background:#fff3ec}
 </div><!-- end appContent -->
 
 <!-- ════════════════════════════════════════
-     MODAL 0: 權限管理（白名單）
+     MODAL 0: 帳號權限管理
 ════════════════════════════════════════ -->
 <div id="wlModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeWlModal()">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:540px">
     <div class="modal-hdr">
       <div class="modal-title">🔐 登入權限管理</div>
       <button class="modal-close" onclick="closeWlModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div style="background:var(--al);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
-        ℹ️ 只有在此清單中的 Google 帳號才能登入系統。管理員可新增/刪除授權帳號。
+      <div style="background:var(--al);border:1px solid rgba(37,99,235,.15);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
+        ℹ️ 只有在此清單中的 Google 帳號才能登入系統。
       </div>
-      <!-- Add form -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input class="emp-input" id="wlEmailInp" placeholder="輸入 Google Email（如：hr@company.com）" style="flex:1;font-size:12px">
+        <input class="emp-input" id="wlEmailInp" placeholder="輸入 Gmail（如：user@gmail.com）" style="flex:1;font-size:12px">
         <select class="emp-input" id="wlRoleInp" style="min-width:100px;font-size:12px">
           <option value="user">一般使用者</option>
           <option value="admin">管理員</option>
         </select>
         <button class="btn btn-p" onclick="addWlEntry()" style="font-size:12px;padding:7px 14px;white-space:nowrap">＋ 新增</button>
       </div>
-      <!-- List -->
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-        授權帳號清單 <span id="wlCount" style="font-family:'JetBrains Mono',monospace;font-weight:400"></span>
+        授權帳號 <span id="wlCount" style="font-family:'JetBrains Mono',monospace;font-weight:400"></span>
       </div>
       <div id="wlList" style="max-height:320px;overflow-y:auto"></div>
     </div>
     <div class="modal-footer">
-      <span style="font-size:11px;color:var(--muted)">變更後立即生效，下次登入時套用</span>
-      <div style="flex:1"></div>
       <button class="btn btn-p" onclick="closeWlModal()" style="font-size:12px">完成</button>
     </div>
   </div>
@@ -1637,243 +1649,161 @@ async function openSendModal_updateGasStatus(){
 
 
 // ════════════════════════════════════════
-//  AUTH & LOGIN  —  Google OAuth via GSI
+//  AUTH — Firebase Google 登入 + Firestore
 // ════════════════════════════════════════
 let currentUser = null;
-let whitelist   = {};
 
-const WL_KEY      = 'whitelist';
-const SESSION_KEY = 'session_user';
-const CLIENT_KEY  = 'google_client_id';
+// Firebase auth callbacks (called by module script)
+window.onFirebaseLogin = async (fbUser) => {
+  const email = fbUser.email;
+  const name  = fbUser.displayName || email.split('@')[0];
+  const photo = fbUser.photoURL || '';
 
-// ── 收合 Client ID 區塊 ──
-function toggleClientSection() {
-  const sec = G('clientIdSection');
-  const arrow = G('clientIdArrow');
-  const open = sec.style.display === 'none' || sec.style.display === '';
-  sec.style.display = open ? '' : 'none';
-  arrow.textContent = open ? '▼' : '▶';
-}
-
-// ── 初始化 ──
-async function initAuth() {
-  await loadWhitelist();
-
-  // 有效 session 直接進入
+  // Check whitelist in Firestore
+  const { db, doc, getDoc } = window._fb;
   try {
-    const s = await window.storage.get(SESSION_KEY);
-    if (s) {
-      const u = JSON.parse(s.value);
-      if (whitelist[u.email] || Object.keys(whitelist).length === 0) {
-        currentUser = u;
-        enterApp(); return;
-      }
+    // Check if any whitelist exists
+    const wlSnap = await getDoc(doc(db, 'settings', 'whitelist'));
+    if (!wlSnap.exists() || Object.keys(wlSnap.data()).length === 0) {
+      // First ever login — auto admin
+      await saveWlToFirestore({ [email]: { email, role: 'admin', addedAt: new Date().toISOString() } });
+      currentUser = { email, name, photo, role: 'admin' };
+      loginSuccess();
+      return;
     }
-  } catch(e) {}
 
-  // 讀取已儲存的 Client ID 填入欄位
-  try {
-    const c = await window.storage.get(CLIENT_KEY);
-    if (c && G('clientIdInput')) G('clientIdInput').value = c.value;
-  } catch(e) {}
+    const wl = wlSnap.data();
+    if (!wl[email]) {
+      setLoginStatus(`❌ ${email} 沒有登入權限，請聯絡管理員`, 'err');
+      G('loginBtn').disabled = false;
+      await window._fb.signOut(window._fb.auth);
+      return;
+    }
 
+    currentUser = { email, name, photo, role: wl[email].role };
+    loginSuccess();
+
+  } catch(e) {
+    setLoginStatus('驗證失敗：' + e.message, 'err');
+    G('loginBtn').disabled = false;
+  }
+};
+
+window.onFirebaseLogout = () => {
+  currentUser = null;
+  G('loginScreen').style.display = 'flex';
+  G('mainHdr').style.display = 'none';
+  G('appContent').style.display = 'none';
+  G('userBadge').style.display = 'none';
+  G('wlBtn').style.display = 'none';
+  setLoginStatus('', '');
+  G('loginBtn').disabled = false;
+};
+
+function initAuth() {
+  // onAuthStateChanged is handled by module script
+  // Just show login screen initially
   G('loginScreen').style.display = 'flex';
 }
 
-// ── Whitelist CRUD ──
-async function loadWhitelist() {
-  try { const r = await window.storage.get(WL_KEY); whitelist = r ? JSON.parse(r.value) : {}; }
-  catch(e) { whitelist = {}; }
-}
-async function saveWhitelist() {
-  try { await window.storage.set(WL_KEY, JSON.stringify(whitelist)); } catch(e) {}
-}
-
-// ── 儲存 Client ID ──
-async function saveClientId() {
-  const id = G('clientIdInput').value.trim();
-  if (!id) { toast('請輸入 Client ID', 'error'); return; }
-  try { await window.storage.set(CLIENT_KEY, id); } catch(e) {}
-  G('clientIdSaved').textContent = '✓ 已儲存';
-  setTimeout(() => { if(G('clientIdSaved')) G('clientIdSaved').textContent = ''; }, 2000);
-}
-
-// ── 主登入流程 ──
-function startGoogleLogin() {
-  const btn    = G('loginBtn');
-  const status = G('loginStatus');
-  const clientId = G('clientIdInput').value.trim();
-
-  if (!clientId) {
-    status.textContent = '請先輸入 Google Client ID（展開上方設定）';
-    status.className = 'login-status err';
-    G('clientIdSection').style.display = '';
-    return;
-  }
-
-  btn.disabled = true;
-  status.textContent = '載入 Google 登入服務…';
-  status.className = 'login-status';
-
-  if (window.google?.accounts?.id) {
-    triggerGsiLogin(clientId);
-  } else {
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.onload  = () => triggerGsiLogin(clientId);
-    s.onerror = () => {
-      status.textContent = '無法載入 Google 登入，請確認網路連線';
-      status.className = 'login-status err';
-      btn.disabled = false;
-    };
-    document.head.appendChild(s);
-  }
-}
-
-function triggerGsiLogin(clientId) {
-  const status = G('loginStatus');
-  const btn    = G('loginBtn');
-
-  // 初始化 GSI — 使用 popup 模式，不需要 redirect URI
-  google.accounts.id.initialize({
-    client_id: clientId,
-    callback: onGsiCredential,
-    auto_select: false,
-    cancel_on_tap_outside: false,
-    ux_mode: 'popup',
-  });
-
-  // 先嘗試 One Tap；若被擋則用按鈕 popup
-  google.accounts.id.prompt(note => {
-    if (note.isNotDisplayed() || note.isSkippedMoment()) {
-      // One Tap 被封鎖，改用 renderButton 的 popup 登入
-      status.textContent = '請選擇 Google 帳號…';
-      // 建立隱藏按鈕並立即點擊
-      const wrap = document.getElementById('gsi_btn_wrap');
-      wrap.innerHTML = '';
-      google.accounts.id.renderButton(wrap, {
-        type: 'standard', size: 'large', theme: 'outline',
-        text: 'signin_with', shape: 'rectangular', width: 320
-      });
-      wrap.querySelector('div[role=button]')?.click();
-    }
-  });
-}
-
-function onGsiCredential(response) {
+async function doGoogleLogin() {
+  const { auth, GoogleAuthProvider, signInWithPopup } = window._fb;
+  G('loginBtn').disabled = true;
+  setLoginStatus('開啟 Google 登入視窗…', '');
   try {
-    // JWT payload — base64url decode
-    const parts   = response.credential.split('.');
-    const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-    handleVerifiedUser(payload.email, payload.name || payload.email.split('@')[0], payload.picture || '');
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+    // onFirebaseLogin will be called by onAuthStateChanged
   } catch(e) {
-    G('loginStatus').textContent = '登入失敗：' + e.message;
-    G('loginStatus').className = 'login-status err';
+    if (e.code !== 'auth/popup-closed-by-user') {
+      setLoginStatus('登入失敗：' + e.message, 'err');
+    } else {
+      setLoginStatus('', '');
+    }
     G('loginBtn').disabled = false;
   }
 }
 
-async function handleVerifiedUser(email, name, picture) {
-  const status = G('loginStatus');
-  const btn    = G('loginBtn');
-
-  // 首次登入 → 自動成為管理員
-  if (Object.keys(whitelist).length === 0) {
-    whitelist[email] = { email, role: 'admin', addedAt: new Date().toISOString() };
-    await saveWhitelist();
-    status.innerHTML = `✓ 歡迎，${name}！首次登入已授予管理員權限`;
-    status.className = 'login-status ok';
-    setTimeout(() => loginSuccess(email, name, picture, 'admin'), 900);
-    return;
-  }
-
-  const entry = whitelist[email];
-  if (!entry) {
-    status.innerHTML = `❌ <strong>${email}</strong> 沒有登入權限，請聯絡管理員`;
-    status.className = 'login-status err';
-    btn.disabled = false;
-    return;
-  }
-
-  status.textContent = `✓ 歡迎回來，${name}！`;
-  status.className = 'login-status ok';
-  setTimeout(() => loginSuccess(email, name, picture, entry.role), 700);
-}
-
-async function loginSuccess(email, name, picture, role) {
-  currentUser = { email, name, picture, role };
-  try { await window.storage.set(SESSION_KEY, JSON.stringify(currentUser)); } catch(e) {}
-  enterApp();
-}
-
-function enterApp() {
+function loginSuccess() {
   G('loginScreen').style.display = 'none';
   G('mainHdr').style.display = '';
   G('appContent').style.display = '';
 
   // User badge
   const avatar = G('userAvatarTxt');
-  if (currentUser.picture) {
-    avatar.innerHTML = `<img src="${currentUser.picture}" style="width:24px;height:24px;border-radius:50%;display:block">`;
+  if (currentUser.photo) {
+    avatar.innerHTML = `<img src="${currentUser.photo}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">`;
     avatar.style.background = 'none';
   } else {
-    avatar.textContent = (currentUser.name || currentUser.email).slice(0,1).toUpperCase();
+    avatar.textContent = (currentUser.name||'U').slice(0,1).toUpperCase();
     avatar.style.background = 'var(--accent)';
   }
   G('userEmailTxt').textContent = currentUser.name || currentUser.email;
   G('userBadge').style.display = 'flex';
   if (currentUser.role === 'admin') G('wlBtn').style.display = '';
+  setLoginStatus('', '');
+}
+
+function setLoginStatus(msg, type) {
+  const el = G('loginStatus');
+  el.innerHTML = msg;
+  el.className = 'login-status' + (type ? ' ' + type : '');
 }
 
 function logout() {
   if (!confirm('確定要登出嗎？')) return;
-  if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
-  currentUser = null;
-  try { window.storage.delete(SESSION_KEY); } catch(e) {}
-  G('loginScreen').style.display = 'flex';
-  G('mainHdr').style.display = 'none';
-  G('appContent').style.display = 'none';
-  G('userBadge').style.display = 'none';
-  G('wlBtn').style.display = 'none';
-  G('loginStatus').textContent = '';
-  G('loginStatus').className = 'login-status';
-  G('loginBtn').disabled = false;
+  window._fb.signOut(window._fb.auth);
 }
 
-// ── Whitelist Modal ──
-function openWlModal()  { renderWlList(); G('wlModal').style.display = 'flex'; }
+// ── Whitelist (Firestore) ──
+let _whitelist = {};
+
+async function loadWlFromFirestore() {
+  const { db, doc, getDoc } = window._fb;
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'whitelist'));
+    _whitelist = snap.exists() ? snap.data() : {};
+  } catch(e) { _whitelist = {}; }
+}
+
+async function saveWlToFirestore(data) {
+  const { db, doc, setDoc } = window._fb;
+  try { await setDoc(doc(db, 'settings', 'whitelist'), data); } catch(e) {}
+}
+
+function openWlModal()  { loadWlFromFirestore().then(renderWlList); G('wlModal').style.display = 'flex'; }
 function closeWlModal() { G('wlModal').style.display = 'none'; }
 
 async function addWlEntry() {
   const email = G('wlEmailInp').value.trim().toLowerCase();
   const role  = G('wlRoleInp').value;
   if (!email.includes('@')) { toast('請輸入有效的 Email', 'error'); return; }
-  if (whitelist[email])     { toast('此帳號已在清單中', 'error'); return; }
-  whitelist[email] = { email, role, addedAt: new Date().toISOString() };
-  await saveWhitelist();
+  if (_whitelist[email])    { toast('此帳號已在清單中', 'error'); return; }
+  _whitelist[email] = { email, role, addedAt: new Date().toISOString() };
+  await saveWlToFirestore(_whitelist);
   G('wlEmailInp').value = '';
   renderWlList();
-  toast(`已新增：${email}（${role === 'admin' ? '管理員' : '一般使用者'}）`, 'success');
+  toast(`已新增：${email}`, 'success');
 }
 
 async function delWlEntry(email) {
   if (email === currentUser?.email) { toast('不能移除自己的帳號', 'error'); return; }
   if (!confirm(`確定移除 ${email} 的登入權限？`)) return;
-  delete whitelist[email];
-  await saveWhitelist();
+  delete _whitelist[email];
+  await saveWlToFirestore(_whitelist);
   renderWlList();
   toast(`已移除 ${email}`, 'success');
 }
 
-async function changeWlRole(email, newRole) {
-  if (!whitelist[email]) return;
-  whitelist[email].role = newRole;
-  await saveWhitelist();
-  toast(`已更新 ${email} 為${newRole === 'admin' ? '管理員' : '一般使用者'}`, 'success');
+async function changeWlRole(email, role) {
+  if (!_whitelist[email]) return;
+  _whitelist[email].role = role;
+  await saveWlToFirestore(_whitelist);
+  toast(`已更新 ${email} 權限`, 'success');
 }
 
 function renderWlList() {
-  const entries = Object.values(whitelist);
+  const entries = Object.values(_whitelist);
   S('wlCount', `共 ${entries.length} 個帳號`);
   const list = G('wlList');
   if (!entries.length) {
@@ -1881,24 +1811,94 @@ function renderWlList() {
     return;
   }
   list.innerHTML = entries.map(e => {
-    const isSelf    = e.email === currentUser?.email;
-    const addedDate = e.addedAt ? new Date(e.addedAt).toLocaleDateString('zh-TW') : '';
+    const isSelf = e.email === currentUser?.email;
+    const date   = e.addedAt ? new Date(e.addedAt).toLocaleDateString('zh-TW') : '';
     return `<div class="wl-item">
-      <span class="wl-email">${e.email}${isSelf ? ' <span style="font-size:10px;color:var(--muted2)">(目前登入)</span>' : ''}</span>
-      <select class="emp-input" onchange="changeWlRole('${e.email}',this.value)" style="min-width:100px;font-size:11px;padding:3px 7px" ${isSelf?'disabled':''}>
+      <span class="wl-email">${e.email}${isSelf?' <span style="font-size:10px;color:var(--muted2)">(目前登入)</span>':''}</span>
+      <select class="emp-input" onchange="changeWlRole('${e.email}',this.value)"
+        style="min-width:100px;font-size:11px;padding:3px 7px" ${isSelf?'disabled':''}>
         <option value="user"  ${e.role==='user' ?'selected':''}>一般使用者</option>
         <option value="admin" ${e.role==='admin'?'selected':''}>管理員</option>
       </select>
-      <span style="font-size:11px;color:var(--muted2);white-space:nowrap">${addedDate}</span>
-      ${isSelf ? '<div style="width:28px"></div>' : `<button class="wl-del" onclick="delWlEntry('${e.email}')" title="移除">✕</button>`}
+      <span style="font-size:11px;color:var(--muted2);white-space:nowrap">${date}</span>
+      ${isSelf?'<div style="width:28px"></div>':`<button class="wl-del" onclick="delWlEntry('${e.email}')" title="移除">✕</button>`}
     </div>`;
   }).join('');
 }
 
+// ── Firestore helpers for employee DB & settings ──
+async function fsGet(path) {
+  const { db, doc, getDoc } = window._fb;
+  try {
+    const snap = await getDoc(doc(db, ...path.split('/')));
+    return snap.exists() ? snap.data() : null;
+  } catch(e) { return null; }
+}
+
+async function fsSet(path, data) {
+  const { db, doc, setDoc } = window._fb;
+  try { await setDoc(doc(db, ...path.split('/')), data); return true; } catch(e) { return false; }
+}
+
+// Override storage-based functions with Firestore
+async function loadEmpDB() {
+  if (!window._fb) { setTimeout(loadEmpDB, 300); return; }
+  const data = await fsGet('settings/empDB');
+  empDB = data ? data.employees || {} : {};
+  refreshEmpCount();
+}
+
+async function saveEmpDB() {
+  if (window._fb) await fsSet('settings/empDB', { employees: empDB });
+  refreshEmpCount();
+}
+
+async function loadTpls() {
+  if (!window._fb) { setTimeout(loadTpls, 300); return; }
+  const data = await fsGet('settings/emailTpls');
+  if (data) {
+    emailTpls = data;
+  } else {
+    emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
+  }
+}
+
+// Override saveTpl
+const _origSaveTpl = window.saveTpl;
+async function saveTpl(){
+  emailTpls.leave.sender=G('tplLeaveSender').value;
+  emailTpls.leave.subj=G('tplLeaveSubj').value;
+  emailTpls.leave.body=G('tplLeaveBody').value;
+  emailTpls.ot.sender=G('tplOtSender').value;
+  emailTpls.ot.subj=G('tplOtSubj').value;
+  emailTpls.ot.body=G('tplOtBody').value;
+  if (window._fb) await fsSet('settings/emailTpls', emailTpls);
+  toast('模板已儲存','success');
+  closeTplModal();
+}
+
+// Override GAS URL save/load
+async function saveGasUrl(){
+  _gasUrl=G('gasUrlInput').value.trim();
+  if (window._fb) await fsSet('settings/gasUrl', { url: _gasUrl });
+  updateGasConnBadge(_gasUrl);
+  toast('GAS URL 已儲存','success');
+}
+
+async function loadGasUrl(){
+  if (_gasUrl) return _gasUrl;
+  if (window._fb) {
+    const data = await fsGet('settings/gasUrl');
+    _gasUrl = data ? data.url || '' : '';
+  }
+  return _gasUrl;
+}
+
 // ─── INIT ───
-loadEmpDB();
-loadTpls();
 initAuth();
+setTimeout(() => { loadEmpDB(); loadTpls(); }, 500);
+
+
 
 </script>
 </body>
