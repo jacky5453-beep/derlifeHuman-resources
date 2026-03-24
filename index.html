@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打卡稽核系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root {
+  --bg:#f4f6f9; --bg2:#ffffff; --bg3:#f0f2f5; --border:#e2e6ea; --border2:#d0d5dd;
+  --accent:#2563eb; --al:#eff6ff;
+  --red:#dc2626; --rl:#fef2f2;
+  --orange:#ea580c; --ol:#fff7ed;
+  --green:#16a34a; --gl:#f0fdf4;
+  --yellow:#ca8a04; --yl:#fefce8;
+  --purple:#7c3aed; --pl:#f5f3ff;
+  --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow2:0 4px 12px rgba(0,0,0,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* HEADER */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.hdr-ico{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.hdr-t{font-weight:700;font-size:16px}
+.hdr-s{font-size:12px;color:var(--muted)}
+.hdr-time{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* MAIN */
+.main{padding:24px 32px}
+
+/* UPLOAD */
+.ups{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.upc{background:var(--bg2);border:1.5px dashed var(--border2);border-radius:10px;padding:16px 20px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.upc:hover,.upc.dragover{border-color:var(--accent);background:var(--al)}
+.upc.loaded{border-style:solid;border-color:var(--accent);background:var(--al)}
+.upc input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2}
+.upl{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.upn{font-size:13px;font-weight:500;display:flex;align-items:center;gap:7px;color:var(--text2)}
+.ups-t{margin-top:6px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.ups-t.ok{color:var(--green)}
+
+/* ACTIONS */
+.acts{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:7px;font-size:13px;font-weight:600;font-family:'Noto Sans TC',sans-serif;cursor:pointer;border:none;transition:all .15s}
+.btn-p{background:var(--accent);color:#fff}
+.btn-p:hover:not(:disabled){background:#1d4ed8;box-shadow:0 2px 8px rgba(37,99,235,.35)}
+.btn-p:disabled{opacity:.4;cursor:not-allowed}
+.btn-g{background:var(--bg2);color:var(--text2);border:1px solid var(--border2)}
+.btn-g:hover{border-color:var(--accent);color:var(--accent);background:var(--al)}
+
+/* DASHBOARD */
+.db-section{margin-bottom:6px}
+.db-head{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;margin-top:16px;display:flex;align-items:center;gap:8px}
+.db-head::after{content:'';flex:1;height:1px;background:var(--border)}
+.db-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px}
+
+/* STAT CARD */
+.sc{background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:16px 18px;transition:all .18s;position:relative;box-shadow:var(--shadow)}
+.sc.click{cursor:pointer}
+.sc.click:hover{transform:translateY(-2px);box-shadow:var(--shadow2)}
+.sc.click:hover .sc-hint{opacity:1}
+.sc-hint{position:absolute;bottom:8px;right:12px;font-size:10px;color:var(--muted2);opacity:0;transition:opacity .15s}
+.sc.a-blue{border-color:var(--accent)!important;background:var(--al)!important}
+.sc.a-red{border-color:var(--red)!important;background:var(--rl)!important}
+.sc.a-orange{border-color:var(--orange)!important;background:var(--ol)!important}
+.sc.a-green{border-color:var(--green)!important;background:var(--gl)!important}
+.sc.a-yellow{border-color:var(--yellow)!important;background:var(--yl)!important}
+.sc-ico{position:absolute;top:14px;right:16px;font-size:22px;opacity:.15}
+.sc-lbl{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.sc-val{font-size:30px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1}
+.c-t{color:var(--text)}.c-b{color:var(--accent)}.c-r{color:var(--red)}.c-o{color:var(--orange)}.c-g{color:var(--green)}.c-y{color:var(--yellow)}.c-p{color:var(--purple)}
+
+/* TABS */
+.tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:2px solid var(--border)}
+.tab{padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--muted);border:none;background:none;font-family:'Noto Sans TC',sans-serif;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:not(.active):hover{color:var(--text2)}
+.tb{display:inline-flex;align-items:center;justify-content:center;background:var(--bg3);color:var(--muted);border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:5px}
+.tab.active .tb{background:var(--al);color:var(--accent)}
+
+/* TABLE */
+.tw{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.tbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3);flex-wrap:wrap}
+.ts{overflow-x:auto;overflow-y:auto;max-height:480px}
+.ts::-webkit-scrollbar{width:6px;height:6px}
+.ts::-webkit-scrollbar-track{background:var(--bg3)}
+.ts::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.ts::-webkit-scrollbar-thumb:hover{background:var(--muted2)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--bg3);position:sticky;top:0;z-index:10}
+th{padding:10px 13px;text-align:left;font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);user-select:none;cursor:pointer}
+th:hover{color:var(--text)}
+td{padding:9px 13px;border-bottom:1px solid rgba(226,230,234,.7);white-space:nowrap;font-size:13px;color:var(--text2)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbfc}
+tr.rm{background:#fffbf8}
+tr.rm:hover td{background:#fff3ec}
+
+/* BADGE */
+.b{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;white-space:nowrap}
+.bn{background:var(--gl);color:var(--green)}
+.bm{background:var(--rl);color:var(--red)}
+.bl{background:var(--al);color:var(--accent)}
+.bo{background:var(--ol);color:var(--orange)}
+.bd{background:var(--bg3);color:var(--muted)}
+.by{background:var(--yl);color:var(--yellow)}
+.bp{background:var(--pl);color:var(--purple)}
+
+/* FILTER */
+.fi{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:6px 11px;color:var(--text);font-size:12px;font-family:'Noto Sans TC',sans-serif;outline:none;min-width:160px;transition:border-color .15s}
+.fi:focus{border-color:var(--accent)}
+.fil{font-size:12px;color:var(--muted);white-space:nowrap;font-weight:500}
+.fic{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* EMPTY */
+.empty{text-align:center;padding:60px 32px;color:var(--muted2)}
+.empty .ico{font-size:44px;margin-bottom:14px}
+.empty p{font-size:14px;color:var(--muted)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:11px 16px;font-size:13px;z-index:9999;box-shadow:var(--shadow2);animation:si .25s ease;max-width:360px}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--red);color:var(--red)}
+@keyframes si{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ── LOGIN SCREEN ── */
+#loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,#f0f4ff 0%,#e8f0fe 50%,#f0fdf4 100%);z-index:1000;display:flex;align-items:center;justify-content:center}
+.login-card{background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(37,99,235,.12),0 2px 8px rgba(0,0,0,.06);padding:48px 44px;width:100%;max-width:420px;text-align:center}
+.login-logo{width:56px;height:56px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 20px}
+.login-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.6}
+.login-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border-radius:10px;border:1.5px solid var(--border2);background:#fff;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);font-family:'Noto Sans TC',sans-serif;transition:all .18s;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.login-google-btn:hover{border-color:var(--accent);background:var(--al);box-shadow:0 3px 10px rgba(37,99,235,.15);transform:translateY(-1px)}
+.login-google-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.login-google-icon{width:20px;height:20px;flex-shrink:0}
+.login-divider{display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--muted2);font-size:12px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.login-status{margin-top:16px;font-size:12px;min-height:20px;color:var(--muted)}
+.login-status.err{color:var(--red)}
+.login-status.ok{color:var(--green)}
+.login-footer{margin-top:28px;font-size:11px;color:var(--muted2);line-height:1.7}
+
+/* ── USER BADGE in header ── */
+.user-badge{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text2)}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-logout{background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:2px 4px;border-radius:4px;margin-left:2px;font-family:'Noto Sans TC',sans-serif}
+.user-logout:hover{color:var(--red);background:var(--rl)}
+
+/* ── WHITELIST MODAL ── */
+.wl-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;margin-bottom:6px}
+.wl-email{flex:1;font-size:13px;font-family:'JetBrains Mono',monospace;color:var(--text2)}
+.wl-role{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600}
+.wl-role.admin{background:var(--pl);color:var(--purple)}
+.wl-role.user{background:var(--al);color:var(--accent)}
+.wl-del{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:13px;padding:3px 6px;border-radius:4px}
+.wl-del:hover{color:var(--red);background:var(--rl)}
+
+/* ── MODAL OVERLAY ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{background:var(--bg2);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:860px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.modal-close{width:30px;height:30px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.modal-close:hover{background:var(--rl);color:var(--red);border-color:var(--red)}
+.modal-body{padding:24px;overflow-y:auto;flex:1}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-shrink:0;background:var(--bg3)}
+
+/* ── EMPLOYEE DB ── */
+.emp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.emp-field{display:flex;flex-direction:column;gap:5px}
+.emp-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.emp-input{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);font-family:'Noto Sans TC',sans-serif;outline:none;transition:border-color .15s}
+.emp-input:focus{border-color:var(--accent);background:var(--bg2)}
+.emp-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;transition:all .15s}
+.emp-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+.emp-avatar{width:36px;height:36px;border-radius:50%;background:var(--al);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+.emp-info{flex:1;min-width:0}
+.emp-name{font-weight:600;font-size:13px}
+.emp-meta{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.emp-del{width:26px;height:26px;border-radius:6px;border:1px solid transparent;background:none;cursor:pointer;color:var(--muted2);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.emp-del:hover{background:var(--rl);border-color:var(--red);color:var(--red)}
+.emp-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:280px;overflow-y:auto;padding-right:4px}
+.emp-list::-webkit-scrollbar{width:5px}
+.emp-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── EMAIL TEMPLATE EDITOR ── */
+.tpl-tabs{display:flex;gap:6px;margin-bottom:14px}
+.tpl-tab{padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);font-family:'Noto Sans TC',sans-serif;transition:all .15s}
+.tpl-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tpl-field{margin-bottom:14px}
+.tpl-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.tpl-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);font-family:'Noto Sans TC',sans-serif;outline:none;transition:border-color .15s}
+.tpl-input:focus{border-color:var(--accent);background:var(--bg2)}
+.tpl-textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px 12px;font-size:13px;color:var(--text);font-family:'Noto Sans TC',sans-serif;outline:none;resize:vertical;min-height:140px;line-height:1.7;transition:border-color .15s}
+.tpl-textarea:focus{border-color:var(--accent);background:var(--bg2)}
+.tpl-hint{font-size:11px;color:var(--muted2);margin-top:5px;line-height:1.6}
+.tpl-vars{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tpl-var{padding:2px 8px;background:var(--al);color:var(--accent);border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;font-family:'JetBrains Mono',monospace;border:1px solid rgba(37,99,235,.2)}
+.tpl-var:hover{background:var(--accent);color:#fff}
+
+/* ── EMAIL SEND MODAL ── */
+.send-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-bottom:16px}
+.send-list::-webkit-scrollbar{width:5px}
+.send-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.send-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3)}
+.send-item input[type=checkbox]{width:16px;height:16px;margin-top:1px;cursor:pointer;accent-color:var(--accent)}
+.send-item-info{flex:1}
+.send-item-name{font-weight:600;font-size:13px}
+.send-item-detail{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.send-item-email{font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace}
+.send-item.no-email{opacity:.5}
+.send-progress{background:var(--bg3);border-radius:8px;padding:14px 16px;margin-top:12px;display:none}
+.send-progress-bar{height:6px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden}
+.send-progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s}
+.send-progress-text{font-size:12px;color:var(--muted);margin-top:6px}
+
+/* ── NAV BUTTONS in header ── */
+.hdr-btns{display:flex;align-items:center;gap:8px}
+.hdr-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'Noto Sans TC',sans-serif;transition:all .15s}
+.hdr-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--al)}
+.hdr-btn.has-data{border-color:var(--green);color:var(--green);background:var(--gl)}
+</style>
+</head>
+<body>
+
+<!-- ════ LOGIN SCREEN ════ -->
+<div id="loginScreen" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">📋</div>
+    <div class="login-title">打卡稽核系統</div>
+    <div class="login-sub">此系統僅限授權人員使用<br>請使用公司 Google 帳號登入</div>
+
+    <!-- Client ID 設定（可收合） -->
+    <div style="margin-bottom:20px;text-align:left">
+      <button onclick="toggleClientSection()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Noto Sans TC',sans-serif;display:flex;align-items:center;gap:5px;padding:0" id="clientIdToggle">
+        ⚙️ Google Client ID 設定 <span id="clientIdArrow" style="font-size:10px">▶</span>
+      </button>
+      <div id="clientIdSection" style="display:none;margin-top:10px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+          請至 <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent)">Google Cloud Console</a> 取得 OAuth 2.0 用戶端 ID<br>
+          類型：<strong>網頁應用程式</strong>｜授權來源：<strong>此頁面的網址</strong>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="emp-input" id="clientIdInput" placeholder="貼上 Client ID（xxxx.apps.googleusercontent.com）" style="flex:1;font-size:11px;font-family:'JetBrains Mono',monospace;padding:7px 10px" oninput="G('clientIdSaved').textContent=''">
+          <button class="btn btn-p" onclick="saveClientId()" style="font-size:11px;padding:7px 12px;white-space:nowrap">儲存</button>
+          <span id="clientIdSaved" style="font-size:11px;color:var(--green);white-space:nowrap"></span>
+        </div>
+      </div>
+    </div>
+
+    <button class="login-google-btn" id="loginBtn" onclick="startGoogleLogin()">
+      <svg class="login-google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      使用 Google 帳號登入
+    </button>
+
+    <!-- GSI renders button here when One Tap is blocked -->
+    <div id="gsi_btn_wrap" style="display:flex;justify-content:center;margin-top:10px;min-height:44px"></div>
+
+    <div class="login-status" id="loginStatus"></div>
+    <div class="login-footer">
+      登入即表示您同意此系統僅作人資稽核用途<br>
+      如需申請使用權限，請聯絡系統管理員
+    </div>
+  </div>
+</div>
+
+<div class="hdr" id="mainHdr" style="display:none">
+  <div class="hdr-l">
+    <div class="hdr-ico">📋</div>
+    <div><div class="hdr-t">打卡稽核系統</div><div class="hdr-s">Attendance Audit System</div></div>
+  </div>
+  <div class="hdr-btns">
+    <button class="hdr-btn" id="hdrEmpBtn" onclick="openEmpModal()">👥 員工資料庫 <span id="empCount" style="font-family:'JetBrains Mono',monospace;font-size:11px"></span></button>
+    <button class="hdr-btn" onclick="openTplModal()">✉️ Email 模板設定</button>
+    <button class="hdr-btn" id="wlBtn" onclick="openWlModal()" style="display:none">🔐 權限管理</button>
+    <div class="user-badge" id="userBadge" style="display:none">
+      <div class="user-avatar" id="userAvatarTxt"></div>
+      <span id="userEmailTxt"></span>
+      <button class="user-logout" onclick="logout()" title="登出">登出</button>
+    </div>
+    <span class="hdr-time" id="lastUpdate"></span>
+  </div>
+</div>
+
+<div id="appContent" style="display:none">
+<div class="main">
+
+  <!-- UPLOAD -->
+  <div class="ups">
+    <div class="upc" id="card1" ondragover="onDrag(event,'card1')" ondragleave="offDrag(event,'card1')" ondrop="onDrop(event,'card1','attendance')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'attendance')">
+      <div class="upl">📋 打卡資料</div>
+      <div class="upn">📂 <span id="name1">點擊或拖曳上傳 .xlsx</span></div>
+      <div class="ups-t" id="status1">尚未載入</div>
+    </div>
+    <div class="upc" id="card2" ondragover="onDrag(event,'card2')" ondragleave="offDrag(event,'card2')" ondrop="onDrop(event,'card2','leave')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'leave')">
+      <div class="upl">🗓 請假申請明細</div>
+      <div class="upn">📂 <span id="name2">點擊或拖曳上傳 .xlsx</span></div>
+      <div class="ups-t" id="status2">尚未載入</div>
+    </div>
+    <div class="upc" id="card3" ondragover="onDrag(event,'card3')" ondragleave="offDrag(event,'card3')" ondrop="onDrop(event,'card3','overtime')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'overtime')">
+      <div class="upl">⏰ 加班申請明細 <span style="color:var(--muted2)">(選填)</span></div>
+      <div class="upn">📂 <span id="name3">點擊或拖曳上傳 .xlsx</span></div>
+      <div class="ups-t" id="status3">尚未載入</div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="acts">
+    <button class="btn btn-p" id="runBtn" disabled onclick="runAudit()">⚡ 執行稽核</button>
+    <button class="btn btn-g" onclick="exportResult()" id="exportBtn" style="display:none">⬇ 匯出稽核結果</button>
+    <button class="btn btn-g" onclick="clearAll()">✕ 清除</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashSection" style="display:none">
+    <div class="db-head">📊 打卡異常稽核</div>
+    <div class="db-grid">
+      <div class="sc" id="cardTotal">
+        <div class="sc-ico">📋</div>
+        <div class="sc-lbl">打卡資料總筆數</div>
+        <div class="sc-val c-t" id="statTotal">-</div>
+      </div>
+      <div class="sc click" id="cardMiss" onclick="statFilter('miss')">
+        <div class="sc-ico">❌</div>
+        <div class="sc-lbl">未打卡筆數</div>
+        <div class="sc-val c-r" id="statMiss">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+      <div class="sc click" id="cardLeave" onclick="statFilter('leave')">
+        <div class="sc-ico">✅</div>
+        <div class="sc-lbl">已申請請假</div>
+        <div class="sc-val c-b" id="statLeave">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+      <div class="sc click" id="cardNoApp" onclick="statFilter('noapp')">
+        <div class="sc-ico">⚠️</div>
+        <div class="sc-lbl">未申請請假單</div>
+        <div class="sc-val c-o" id="statNoApp">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+    </div>
+
+    <div class="db-head">⏱ 超時出勤稽核</div>
+    <div class="db-grid">
+      <div class="sc click" id="cardOt" onclick="statFilter('ot')">
+        <div class="sc-ico">🕐</div>
+        <div class="sc-lbl">超時出勤筆數</div>
+        <div class="sc-val c-y" id="statOt">-</div>
+        <div class="sc-hint">點擊查看全部 ↓</div>
+      </div>
+      <div class="sc click" id="cardOtNR" onclick="statFilter('ot-no-reason')">
+        <div class="sc-ico">📝</div>
+        <div class="sc-lbl">超時未填原因</div>
+        <div class="sc-val c-r" id="statOtNR">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+      <div class="sc click" id="cardOtNA" onclick="statFilter('ot-no-app')">
+        <div class="sc-ico">🚫</div>
+        <div class="sc-lbl">實際加班未申請</div>
+        <div class="sc-val c-o" id="statOtNA">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+      <div class="sc click" id="cardOtOk" onclick="statFilter('ot-ok')">
+        <div class="sc-ico">✔️</div>
+        <div class="sc-lbl">加班已申請</div>
+        <div class="sc-val c-g" id="statOtOk">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div id="tabsSection" style="display:none">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('audit',this)">🔍 未打卡稽核 <span class="tb" id="tbA">-</span></button>
+      <button class="tab" onclick="switchTab('ot',this)">⏱ 超時出勤稽核 <span class="tb" id="tbOT">-</span></button>
+      <button class="tab" onclick="switchTab('att',this)">🕐 打卡資料</button>
+      <button class="tab" onclick="switchTab('lv',this)">📅 請假明細</button>
+      <button class="tab" onclick="switchTab('ov',this)">🗂 加班申請明細</button>
+    </div>
+
+    <!-- Tab: 未打卡稽核 -->
+    <div id="tab-audit">
+      <div class="tw">
+        <div class="tbar">
+          <span class="fil">篩選：</span>
+          <input class="fi" id="absQ" placeholder="員工編號 / 姓名 / 部門" oninput="applyAbs()">
+          <select class="fi" id="absSel" onchange="applyAbs()" style="min-width:140px">
+            <option value="">全部狀態</option>
+            <option value="已申請">已申請</option>
+            <option value="未申請請假單">未申請請假單</option>
+          </select>
+          <span class="fic" id="absCnt"></span>
+          <div style="flex:1"></div>
+          <button class="btn btn-p" style="font-size:12px;padding:6px 14px" onclick="openSendModal('leave')">📧 寄發未申請請假通知</button>
+        </div>
+        <div class="ts">
+          <table id="tblAbs"><thead><tr>
+            <th onclick="srt('tblAbs',0)">#</th>
+            <th onclick="srt('tblAbs',1)">員工編號</th>
+            <th onclick="srt('tblAbs',2)">姓名</th>
+            <th onclick="srt('tblAbs',3)">部門</th>
+            <th onclick="srt('tblAbs',4)">工作日期</th>
+            <th onclick="srt('tblAbs',5)">應刷卡時間</th>
+            <th onclick="srt('tblAbs',6)">卡別</th>
+            <th>比對結果</th><th>異常狀態</th><th>請假類型</th><th>請假日期</th>
+          </tr></thead><tbody id="bAbs"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: 超時出勤稽核 -->
+    <div id="tab-ot" style="display:none">
+      <div class="tw">
+        <div class="tbar">
+          <span class="fil">篩選：</span>
+          <input class="fi" id="otQ" placeholder="員工編號 / 姓名 / 部門" oninput="applyOt()">
+          <select class="fi" id="otSel" onchange="applyOt()" style="min-width:180px">
+            <option value="">全部超時狀態</option>
+            <option value="未填原因">未填超時原因</option>
+            <option value="實際加班-未申請">實際加班-未申請</option>
+            <option value="實際加班-已申請">實際加班-已申請</option>
+            <option value="其他原因">其他原因</option>
+          </select>
+          <span class="fic" id="otCnt"></span>
+          <div style="flex:1"></div>
+          <button class="btn btn-p" style="font-size:12px;padding:6px 14px" onclick="openSendModal('ot')">📧 寄發未申請加班通知</button>
+        </div>
+        <div class="ts">
+          <table id="tblOt"><thead><tr>
+            <th onclick="srt('tblOt',0)">#</th>
+            <th onclick="srt('tblOt',1)">員工編號</th>
+            <th onclick="srt('tblOt',2)">姓名</th>
+            <th onclick="srt('tblOt',3)">部門</th>
+            <th onclick="srt('tblOt',4)">工作日期</th>
+            <th onclick="srt('tblOt',5)">應刷卡時間</th>
+            <th onclick="srt('tblOt',6)">實際打卡時間</th>
+            <th onclick="srt('tblOt',7)">卡別</th>
+            <th>超時出勤</th><th>超時出勤原因</th><th>稽核狀態</th><th>加班申請日期</th>
+          </tr></thead><tbody id="bOt"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: 打卡資料 -->
+    <div id="tab-att" style="display:none">
+      <div class="tw">
+        <div class="tbar">
+          <span class="fil">搜尋：</span>
+          <input class="fi" placeholder="員工編號 / 姓名 / 比對結果" oninput="fgen('tblAtt',this.value)">
+        </div>
+        <div class="ts">
+          <table id="tblAtt"><thead><tr>
+            <th>#</th><th>員工編號</th><th>姓名</th><th>部門</th>
+            <th>工作日期</th><th>應刷卡時間</th><th>實際打卡時間</th><th>卡別</th>
+            <th>打卡地址</th><th>比對結果</th><th>異常處理</th><th>來源</th>
+            <th>備註</th><th>超時出勤</th><th>超時出勤原因</th><th>超時出勤說明</th>
+          </tr></thead><tbody id="bAtt"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: 請假明細 -->
+    <div id="tab-lv" style="display:none">
+      <div class="tw">
+        <div class="tbar">
+          <span class="fil">搜尋：</span>
+          <input class="fi" placeholder="員工編號 / 姓名 / 假勤項目" oninput="fgen('tblLv',this.value)">
+        </div>
+        <div class="ts">
+          <table id="tblLv"><thead><tr>
+            <th>#</th><th>員工編號</th><th>姓名</th><th>部門</th>
+            <th>假勤項目</th><th>假勤開始日期</th><th>假勤開始時間</th>
+            <th>假勤結束日期</th><th>時數結束時間</th><th>請假時數</th>
+            <th>請假單位</th><th>來源</th><th>銷假</th><th>請假原因</th>
+          </tr></thead><tbody id="bLv"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: 加班申請明細 -->
+    <div id="tab-ov" style="display:none">
+      <div class="tw">
+        <div class="tbar">
+          <span class="fil">搜尋：</span>
+          <input class="fi" placeholder="員工編號 / 姓名 / 部門" oninput="fgen('tblOv',this.value)">
+        </div>
+        <div class="ts">
+          <table id="tblOv"><thead><tr>
+            <th>#</th><th>員工編號</th><th>姓名</th><th>部門</th>
+            <th>加班開始日期</th><th>加班開始時間</th><th>加班結束日期</th>
+            <th>加班結束時間</th><th>加班歸屬日</th><th>加班類型</th>
+            <th>加班時數</th><th>加班單位</th><th>加班原因</th><th>來源</th>
+          </tr></thead><tbody id="bOv"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMPTY -->
+  <div id="emptyState">
+    <div class="empty">
+      <div class="ico">📊</div>
+      <p>請上傳打卡資料及請假申請明細（加班申請明細選填），然後點擊「執行稽核」</p>
+    </div>
+  </div>
+
+</div><!-- end main -->
+</div><!-- end appContent -->
+
+<!-- ════════════════════════════════════════
+     MODAL 0: 權限管理（白名單）
+════════════════════════════════════════ -->
+<div id="wlModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeWlModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hdr">
+      <div class="modal-title">🔐 登入權限管理</div>
+      <button class="modal-close" onclick="closeWlModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--al);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
+        ℹ️ 只有在此清單中的 Google 帳號才能登入系統。管理員可新增/刪除授權帳號。
+      </div>
+      <!-- Add form -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input class="emp-input" id="wlEmailInp" placeholder="輸入 Google Email（如：hr@company.com）" style="flex:1;font-size:12px">
+        <select class="emp-input" id="wlRoleInp" style="min-width:100px;font-size:12px">
+          <option value="user">一般使用者</option>
+          <option value="admin">管理員</option>
+        </select>
+        <button class="btn btn-p" onclick="addWlEntry()" style="font-size:12px;padding:7px 14px;white-space:nowrap">＋ 新增</button>
+      </div>
+      <!-- List -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+        授權帳號清單 <span id="wlCount" style="font-family:'JetBrains Mono',monospace;font-weight:400"></span>
+      </div>
+      <div id="wlList" style="max-height:320px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:11px;color:var(--muted)">變更後立即生效，下次登入時套用</span>
+      <div style="flex:1"></div>
+      <button class="btn btn-p" onclick="closeWlModal()" style="font-size:12px">完成</button>
+    </div>
+  </div>
+</div>
+<!-- ════════════════════════════════════════
+     MODAL 1: 員工資料庫
+════════════════════════════════════════ -->
+<div id="empModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeEmpModal()">
+  <div class="modal" style="max-width:740px">
+    <div class="modal-hdr">
+      <div class="modal-title">👥 員工資料庫</div>
+      <button class="modal-close" onclick="closeEmpModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Add form -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">＋ 新增員工</div>
+        <div class="emp-grid">
+          <div class="emp-field">
+            <div class="emp-label">員工編號</div>
+            <input class="emp-input" id="empIdInp" placeholder="如：DLS0046" oninput="empInputChange()">
+          </div>
+          <div class="emp-field">
+            <div class="emp-label">姓名</div>
+            <input class="emp-input" id="empNameInp" placeholder="如：李啟睿" oninput="empInputChange()">
+          </div>
+          <div class="emp-field">
+            <div class="emp-label">Email</div>
+            <input class="emp-input" id="empEmailInp" placeholder="如：user@company.com" oninput="empInputChange()">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <button class="btn btn-p" id="empAddBtn" onclick="addEmp()" disabled style="font-size:12px;padding:7px 16px">＋ 新增</button>
+          <button class="btn btn-g" onclick="importEmpFromAudit()" style="font-size:12px;padding:7px 16px">📋 從稽核資料匯入員工</button>
+          <span id="empImportHint" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
+      <!-- List -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">員工名單 <span id="empListCount" style="font-family:'JetBrains Mono',monospace;font-weight:400"></span></div>
+        <input class="fi" id="empSearch" placeholder="搜尋員工..." oninput="renderEmpList()" style="min-width:160px;font-size:12px;padding:5px 10px">
+      </div>
+      <div class="emp-list" id="empList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="exportEmpDB()" style="font-size:12px">⬇ 匯出員工清單</button>
+      <button class="btn btn-p" onclick="closeEmpModal()" style="font-size:12px">完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     MODAL 2: Email 模板設定
+════════════════════════════════════════ -->
+<div id="tplModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeTplModal()">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-hdr">
+      <div class="modal-title">✉️ Email 模板 ＆ Gmail 設定</div>
+      <button class="modal-close" onclick="closeTplModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+
+      <!-- GAS SETUP SECTION -->
+      <div id="gasSetupSection" style="padding:20px 24px;border-bottom:2px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">⚙️ Google Apps Script 連線設定</div>
+          <span id="gasConnBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--bg3);color:var(--muted)">未連線</span>
+        </div>
+
+        <!-- Step guide -->
+        <div style="background:var(--al);border:1px solid rgba(37,99,235,.2);border-radius:10px;padding:16px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:12px;letter-spacing:.04em">📋 設定步驟（一次性，約 5 分鐘）</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">1</div>
+              <div style="font-size:12px;line-height:1.7;color:var(--text2)">
+                開啟 <a href="https://script.google.com" target="_blank" style="color:var(--accent);font-weight:600">script.google.com</a>，用<strong>公司 Gmail</strong> 登入 → 點「新增專案」
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">2</div>
+              <div style="font-size:12px;line-height:1.7;color:var(--text2);flex:1">
+                刪除預設程式碼，貼上以下程式碼：
+                <div style="background:#1e293b;color:#e2e8f0;border-radius:7px;padding:12px;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;position:relative">
+<pre id="gasCodeBlock">function doGet(e) {
+  try {
+    const p = e.parameter;
+
+    // 身份驗證：回傳目前登入的 Google 帳號
+    if (p.action === 'whoami') {
+      const email = Session.getActiveUser().getEmail();
+      const name = Session.getActiveUser().getEmail().split('@')[0];
+      return buildResponse({status:'ok', email:email, name:name});
+    }
+
+    // 連線測試
+    if (p._test) {
+      return buildResponse({status:'ok', message:'connected'});
+    }
+
+    // 寄送 Email
+    GmailApp.sendEmail(
+      decodeURIComponent(p.to),
+      decodeURIComponent(p.subject),
+      decodeURIComponent(p.body),
+      { name: decodeURIComponent(p.sender || '%E4%BA%BA%E8%B3%87%E9%83%A8%E9%96%80') }
+    );
+    return buildResponse({status:'ok'});
+
+  } catch(err) {
+    return buildResponse({status:'error', message:err.toString()});
+  }
+}
+
+function doPost(e) { return doGet(e); }
+
+function buildResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+                  <button onclick="copyGasCode()" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,.15);border:none;color:#e2e8f0;font-size:11px;padding:3px 8px;border-radius:4px;cursor:pointer" id="copyGasBtn">複製</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">3</div>
+              <div style="font-size:12px;line-height:1.7;color:var(--text2)">
+                點右上角「部署」→「新增部署作業」→ 類型選 <strong>網頁應用程式</strong><br>
+                執行身分：<strong>我</strong>｜誰可以存取：<strong>所有人</strong> → 點「部署」→ 複製網址
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">4</div>
+              <div style="font-size:12px;line-height:1.7;color:var(--text2);flex:1">
+                將複製的 URL 貼到下方輸入框，點「測試連線」確認可用
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- URL input + test -->
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="fi" id="gasUrlInput" placeholder="https://script.google.com/macros/s/…/exec" style="flex:1;font-size:12px;font-family:'JetBrains Mono',monospace" oninput="onGasUrlChange()">
+          <button class="btn btn-g" onclick="testGasConn()" id="gasTestBtn" style="font-size:12px;padding:7px 14px;white-space:nowrap">🔌 測試連線</button>
+          <button class="btn btn-p" onclick="saveGasUrl()" style="font-size:12px;padding:7px 14px;white-space:nowrap">💾 儲存</button>
+        </div>
+        <div id="gasTestResult" style="margin-top:8px;font-size:12px;min-height:18px"></div>
+      </div>
+
+      <!-- TEMPLATE TABS -->
+      <div style="padding:20px 24px">
+        <div class="tpl-tabs">
+          <button class="tpl-tab active" id="tplTab1" onclick="switchTplTab('leave',this)">📅 未申請請假單通知</button>
+          <button class="tpl-tab" id="tplTab2" onclick="switchTplTab('ot',this)">⏱ 未申請加班單通知</button>
+        </div>
+
+        <!-- Leave template -->
+        <div id="tplLeave">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="tpl-field">
+              <div class="tpl-label">寄件人名稱</div>
+              <input class="tpl-input" id="tplLeaveSender" placeholder="如：人資部門" value="人資部門">
+            </div>
+            <div class="tpl-field">
+              <div class="tpl-label">郵件主旨</div>
+              <input class="tpl-input" id="tplLeaveSubj" oninput="updateTplPreview('leave')">
+            </div>
+          </div>
+          <div class="tpl-field">
+            <div class="tpl-label">郵件內容</div>
+            <textarea class="tpl-textarea" id="tplLeaveBody" rows="7" oninput="updateTplPreview('leave')"></textarea>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--muted)">插入變數：</span>
+              <span class="tpl-var" onclick="insertVar('tplLeaveBody','{{姓名}}')">{{姓名}}</span>
+              <span class="tpl-var" onclick="insertVar('tplLeaveBody','{{員工編號}}')">{{員工編號}}</span>
+              <span class="tpl-var" onclick="insertVar('tplLeaveBody','{{部門}}')">{{部門}}</span>
+              <span class="tpl-var" onclick="insertVar('tplLeaveBody','{{異常日期清單}}')">{{異常日期清單}}</span>
+              <span class="tpl-var" onclick="insertVar('tplLeaveBody','{{今日日期}}')">{{今日日期}}</span>
+            </div>
+          </div>
+          <div style="background:var(--bg3);border-radius:8px;padding:14px;border:1px solid var(--border);margin-top:4px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">👁 預覽</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-wrap;max-height:140px;overflow-y:auto" id="tplLeavePreview"></div>
+          </div>
+        </div>
+
+        <!-- OT template -->
+        <div id="tplOt" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="tpl-field">
+              <div class="tpl-label">寄件人名稱</div>
+              <input class="tpl-input" id="tplOtSender" placeholder="如：人資部門" value="人資部門">
+            </div>
+            <div class="tpl-field">
+              <div class="tpl-label">郵件主旨</div>
+              <input class="tpl-input" id="tplOtSubj" oninput="updateTplPreview('ot')">
+            </div>
+          </div>
+          <div class="tpl-field">
+            <div class="tpl-label">郵件內容</div>
+            <textarea class="tpl-textarea" id="tplOtBody" rows="7" oninput="updateTplPreview('ot')"></textarea>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--muted)">插入變數：</span>
+              <span class="tpl-var" onclick="insertVar('tplOtBody','{{姓名}}')">{{姓名}}</span>
+              <span class="tpl-var" onclick="insertVar('tplOtBody','{{員工編號}}')">{{員工編號}}</span>
+              <span class="tpl-var" onclick="insertVar('tplOtBody','{{部門}}')">{{部門}}</span>
+              <span class="tpl-var" onclick="insertVar('tplOtBody','{{異常日期清單}}')">{{異常日期清單}}</span>
+              <span class="tpl-var" onclick="insertVar('tplOtBody','{{今日日期}}')">{{今日日期}}</span>
+            </div>
+          </div>
+          <div style="background:var(--bg3);border-radius:8px;padding:14px;border:1px solid var(--border);margin-top:4px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">👁 預覽</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-wrap;max-height:140px;overflow-y:auto" id="tplOtPreview"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="resetTpl()" style="font-size:12px">↺ 重設預設</button>
+      <button class="btn btn-p" onclick="saveTpl()" style="font-size:12px">💾 儲存模板</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     MODAL 3: 發送 Email
+════════════════════════════════════════ -->
+<div id="sendModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeSendModal()">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-hdr">
+      <div class="modal-title" id="sendModalTitle">📧 寄發通知</div>
+      <button class="modal-close" onclick="closeSendModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text2)" id="sendModalDesc"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-g" onclick="selectAllSend(true)" style="font-size:11px;padding:5px 10px">全選</button>
+          <button class="btn btn-g" onclick="selectAllSend(false)" style="font-size:11px;padding:5px 10px">取消全選</button>
+        </div>
+      </div>
+      <div class="send-list" id="sendList"></div>
+      <div id="noEmailWarn" style="display:none;background:var(--yl);border:1px solid var(--yellow);border-radius:7px;padding:10px 14px;font-size:12px;color:var(--yellow);margin-bottom:10px">
+        ⚠ 部分員工未設定 Email，請先在員工資料庫中補齊資料
+      </div>
+      <!-- GAS connection status -->
+      <div id="sendGasBar" style="border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between"></div>
+      <div class="send-progress" id="sendProgress">
+        <div style="font-size:12px;font-weight:600;color:var(--text2)">發送進度</div>
+        <div class="send-progress-bar"><div class="send-progress-fill" id="sendFill" style="width:0%"></div></div>
+        <div class="send-progress-text" id="sendProgressText"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:var(--muted)" id="sendSelectedCount"></span>
+      <div style="flex:1"></div>
+      <button class="btn btn-g" onclick="closeSendModal()" style="font-size:12px">取消</button>
+      <button class="btn btn-p" id="sendFireBtn" onclick="fireSendEmail()" style="font-size:12px">📧 一鍵發送</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let attData=null,leaveData=null,otData=null,absRows=[],otRows=[];
+let aAbsF='',aOtF='';
+
+// ─── DRAG DROP ───
+function onDrag(e,id){e.preventDefault();document.getElementById(id).classList.add('dragover')}
+function offDrag(e,id){document.getElementById(id).classList.remove('dragover')}
+function onDrop(e,id,t){e.preventDefault();offDrag(e,id);const f=e.dataTransfer.files[0];if(f)processFile(f,t)}
+
+// ─── FILE ───
+function loadFile(e,t){const f=e.target.files[0];if(f)processFile(f,t)}
+function processFile(file,type){
+  const r=new FileReader();
+  r.onload=ev=>{
+    const wb=XLSX.read(ev.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(type==='attendance'){attData=parseAtt(raw);setupCard(1,file.name,attData.length)}
+    else if(type==='leave'){leaveData=parseLeave(raw);setupCard(2,file.name,leaveData.length)}
+    else{otData=parseOT(raw);setupCard(3,file.name,otData.length)}
+    checkReady();
+  };
+  r.readAsArrayBuffer(file);
+}
+function setupCard(n,name,cnt){
+  G('name'+n).textContent=name;
+  const s=G('status'+n);s.textContent=`✓ 已載入 ${cnt} 筆`;s.className='ups-t ok';
+  G('card'+n).classList.add('loaded');
+}
+function checkReady(){
+  G('runBtn').disabled=!(attData&&leaveData);
+  if(attData&&leaveData)toast('資料就緒，可執行稽核','success');
+}
+
+// ─── PARSE ───
+function parseAtt(raw){
+  let hi=raw.findIndex(r=>String(r[0]).trim()==='#');if(hi<0)hi=4;
+  const h=raw[hi],res=[];
+  for(let i=hi+1;i<raw.length;i++){const r=raw[i];if(r.every(c=>c===''))continue;const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);res.push(o);}
+  return res;
+}
+function parseLeave(raw){
+  let hi=raw.findIndex(r=>String(r[0]).trim()==='員工編號');if(hi<0)hi=5;
+  const h=raw[hi],res=[];
+  for(let i=hi+1;i<raw.length;i++){const r=raw[i];if(r.every(c=>c===''))continue;const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);res.push(o);}
+  return res;
+}
+function parseOT(raw){
+  let hi=raw.findIndex(r=>String(r[0]).trim()==='員工編號');if(hi<0)hi=6;
+  const h=raw[hi],res=[];
+  for(let i=hi+1;i<raw.length;i++){const r=raw[i];if(r.every(c=>c===''))continue;const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);res.push(o);}
+  return res;
+}
+
+// ─── DATE ───
+function nd(v){
+  if(!v&&v!==0)return'';const s=String(v).trim();
+  if(/^\d{5,}$/.test(s)){const d=XLSX.SSF.parse_date_code(parseInt(s));if(d)return`${d.y}/${p2(d.m)}/${p2(d.d)}`;}
+  const m1=s.match(/^(\d{4}\/\d{2}\/\d{2})/);if(m1)return m1[1];
+  const m2=s.match(/^(\d{4}-\d{2}-\d{2})/);if(m2)return m2[1].replace(/-/g,'/');
+  return s;
+}
+function fdt(v){
+  if(!v&&v!==0)return'';const s=String(v).trim();
+  if(/^\d+(\.\d+)?$/.test(s)){const d=XLSX.SSF.parse_date_code(parseFloat(s));if(d)return`${d.y}/${p2(d.m)}/${p2(d.d)} ${p2(d.H)}:${p2(d.M)}`;}
+  const m=s.match(/(\d{4}\/\d{2}\/\d{2}) (\d{2}:\d{2})/);if(m)return`${m[1]} ${m[2]}`;
+  return s;
+}
+function p2(n){return String(n).padStart(2,'0')}
+function dateRange(s,e){
+  const arr=[];
+  try{
+    const sd=new Date(s.replace(/\//g,'-')),ed=new Date((e||s).replace(/\//g,'-'));
+    if(isNaN(sd)||isNaN(ed))return[s];
+    let c=new Date(sd);
+    while(c<=ed){arr.push(`${c.getFullYear()}/${p2(c.getMonth()+1)}/${p2(c.getDate())}`);c.setDate(c.getDate()+1);}
+  }catch{return[s];}
+  return arr.length?arr:[s];
+}
+
+// ─── AUDIT ───
+function runAudit(){
+  if(!attData||!leaveData)return;
+
+  // Build maps
+  const lvMap={};
+  leaveData.forEach(l=>{
+    const id=String(l['員工編號']||'').trim();
+    const sd=nd(l['假勤開始日期']),ed=nd(l['假勤結束日期']);
+    if(!id||!sd)return;
+    dateRange(sd,ed||sd).forEach(d=>{const k=id+'|'+d;if(!lvMap[k])lvMap[k]=[];lvMap[k].push(l);});
+  });
+
+  const ovMap={};
+  if(otData){
+    otData.forEach(o=>{
+      const id=String(o['員工編號']||'').trim();
+      const sd=nd(o['加班開始日期']),ed=nd(o['加班結束日期']);
+      if(!id||!sd)return;
+      dateRange(sd,ed||sd).forEach(d=>{const k=id+'|'+d;if(!ovMap[k])ovMap[k]=[];ovMap[k].push(o);});
+    });
+  }
+
+  // 1. Absence
+  absRows=attData.filter(r=>String(r['比對結果']||'').trim()==='未打卡').map(r=>{
+    const id=String(r['員工編號']||'').trim(),d=nd(r['工作日期']);
+    const ll=lvMap[id+'|'+d]||[];
+    return{...r,_as:ll.length?'已申請':'未申請請假單',_lt:ll.map(l=>l['假勤項目']).join(', '),_ld:ll.map(l=>nd(l['假勤開始日期'])).join(', ')};
+  });
+
+  // 2. Overtime
+  otRows=attData.filter(r=>String(r['超時出勤']||'').trim()!=='').map(r=>{
+    const id=String(r['員工編號']||'').trim(),d=nd(r['工作日期']);
+    const reason=String(r['超時出勤原因']||'').trim();
+    let os='',oad='';
+    if(!reason){os='未填原因';}
+    else if(reason==='實際加班'){
+      const apps=ovMap[id+'|'+d]||[];
+      os=apps.length?'實際加班-已申請':'實際加班-未申請';
+      oad=apps.map(a=>nd(a['加班開始日期'])).join(', ');
+    }else{os='其他原因';}
+    return{...r,_os:os,_oad:oad,_or:reason};
+  });
+
+  // Stats
+  const lc=absRows.filter(r=>r._as==='已申請').length;
+  const nc=absRows.filter(r=>r._as==='未申請請假單').length;
+  const ot=otRows.length;
+  const onr=otRows.filter(r=>r._os==='未填原因').length;
+  const ona=otRows.filter(r=>r._os==='實際加班-未申請').length;
+  const ook=otRows.filter(r=>r._os==='實際加班-已申請').length;
+
+  ['statTotal','statMiss','statLeave','statNoApp','statOt','statOtNR','statOtNA','statOtOk'].forEach((id,i)=>{
+    S(id,[attData.length,absRows.length,lc,nc,ot,onr,ona,ook][i]);
+  });
+  S('tbA',absRows.length);S('tbOT',otRows.length);
+
+  G('dashSection').style.display='';
+  G('tabsSection').style.display='';
+  G('emptyState').style.display='none';
+  G('exportBtn').style.display='';
+  G('lastUpdate').textContent='稽核時間：'+new Date().toLocaleString('zh-TW');
+
+  renderAbs(absRows);renderOt(otRows);renderAtt(attData);renderLv(leaveData);
+  if(otData)renderOv(otData);
+  S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
+  toast(`稽核完成 ✓  未打卡 ${absRows.length} 筆｜超時 ${ot} 筆（異常 ${onr+ona} 筆）`,'success');
+}
+
+// ─── RENDER ───
+function renderAbs(rows){
+  const b=G('bAbs');
+  if(!rows.length){b.innerHTML='<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted2)">無未打卡記錄</td></tr>';return;}
+  b.innerHTML=rows.map((r,i)=>{
+    const sb=r._as==='已申請'?`<span class="b bl">✓ 已申請</span>`:`<span class="b bo">⚠ 未申請請假單</span>`;
+    return`<tr class="rm"><td class="mono" style="color:var(--muted2)">${i+1}</td>
+    <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
+    <td>${r['部門']||''}</td><td class="mono">${nd(r['工作日期'])}</td>
+    <td class="mono">${fdt(r['應刷卡時間'])}</td><td>${r['卡別']||''}</td>
+    <td><span class="b bm">未打卡</span></td><td>${sb}</td>
+    <td style="color:var(--accent)">${r._lt}</td><td class="mono">${r._ld}</td></tr>`;
+  }).join('');
+}
+
+function renderOt(rows){
+  const b=G('bOt');
+  if(!rows.length){b.innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--muted2)">無超時出勤記錄</td></tr>';return;}
+  b.innerHTML=rows.map((r,i)=>{
+    let sb='';
+    if(r._os==='未填原因')sb=`<span class="b bm">⚠ 未填原因</span>`;
+    else if(r._os==='實際加班-未申請')sb=`<span class="b bo">⚠ 實際加班-未申請</span>`;
+    else if(r._os==='實際加班-已申請')sb=`<span class="b bn">✓ 實際加班-已申請</span>`;
+    else sb=`<span class="b bd">${r._or||'其他原因'}</span>`;
+    const rb=r._or?`<span class="b by">${r._or}</span>`:`<span style="color:var(--muted2);font-size:11px">（未填）</span>`;
+    const isWarn=r._os==='未填原因'||r._os==='實際加班-未申請';
+    return`<tr class="${isWarn?'rm':''}">
+    <td class="mono" style="color:var(--muted2)">${i+1}</td>
+    <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
+    <td>${r['部門']||''}</td><td class="mono">${nd(r['工作日期'])}</td>
+    <td class="mono">${fdt(r['應刷卡時間'])}</td><td class="mono">${fdt(r['實際打卡時間'])}</td>
+    <td>${r['卡別']||''}</td><td><span class="b by">★ ${r['超時出勤']||''}</span></td>
+    <td>${rb}</td><td>${sb}</td><td class="mono" style="color:var(--accent)">${r._oad}</td></tr>`;
+  }).join('');
+}
+
+function renderAtt(rows){
+  G('bAtt').innerHTML=rows.map((r,i)=>{
+    const res=String(r['比對結果']||'');
+    const rb=res==='正常'?`<span class="b bn">正常</span>`:res==='未打卡'?`<span class="b bm">未打卡</span>`:`<span class="b bd">${res}</span>`;
+    const hb=r['異常處理']?`<span class="b bd">${r['異常處理']}</span>`:'';
+    const ob=r['超時出勤']?`<span class="b by">★</span>`:'';
+    const reb=r['超時出勤原因']?`<span class="b bp">${r['超時出勤原因']}</span>`:'';
+    return`<tr><td class="mono" style="color:var(--muted2)">${i+1}</td>
+    <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
+    <td>${r['部門']||''}</td><td class="mono">${nd(r['工作日期'])}</td>
+    <td class="mono">${fdt(r['應刷卡時間'])}</td><td class="mono">${fdt(r['實際打卡時間'])}</td>
+    <td>${r['卡別']||''}</td><td style="font-size:11px;color:var(--muted)">${r['打卡地址']||''}</td>
+    <td>${rb}</td><td>${hb}</td><td style="color:var(--muted)">${r['來源']||''}</td>
+    <td style="color:var(--muted)">${r['備註']||''}</td><td>${ob}</td><td>${reb}</td>
+    <td style="color:var(--muted);font-size:12px">${r['超時出勤說明']||''}</td></tr>`;
+  }).join('');
+}
+
+function renderLv(rows){
+  G('bLv').innerHTML=rows.map((r,i)=>`<tr>
+    <td class="mono" style="color:var(--muted2)">${i+1}</td>
+    <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
+    <td>${r['部門']||''}</td><td><span class="b bl">${r['假勤項目']||''}</span></td>
+    <td class="mono">${nd(r['假勤開始日期'])}</td><td class="mono">${r['假勤開始時間']||''}</td>
+    <td class="mono">${nd(r['假勤結束日期'])}</td><td class="mono">${r['時數結束時間']||''}</td>
+    <td class="mono">${r['請假時數']||''}</td><td>${r['請假單位']||''}</td>
+    <td style="color:var(--muted)">${r['來源']||''}</td><td style="color:var(--muted)">${r['銷假']||''}</td>
+    <td style="color:var(--muted)">${r['請假原因']||''}</td></tr>`).join('');
+}
+
+function renderOv(rows){
+  G('bOv').innerHTML=rows.map((r,i)=>`<tr>
+    <td class="mono" style="color:var(--muted2)">${i+1}</td>
+    <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
+    <td>${r['部門']||''}</td><td class="mono">${nd(r['加班開始日期'])}</td>
+    <td class="mono">${r['加班開始時間']||''}</td><td class="mono">${nd(r['加班結束日期'])}</td>
+    <td class="mono">${r['加班結束時間']||''}</td><td class="mono">${nd(r['加班歸屬日'])}</td>
+    <td><span class="b by">${r['加班類型']||''}</span></td>
+    <td class="mono">${r['加班時數']||''}</td><td>${r['加班單位']||''}</td>
+    <td style="color:var(--muted)">${r['加班原因']||''}</td>
+    <td style="color:var(--muted)">${r['來源']||''}</td></tr>`).join('');
+}
+
+// ─── STAT FILTER ───
+const CMAP={
+  miss:{id:'cardMiss',cls:'a-red',tab:'audit',sel:'absSel',val:''},
+  leave:{id:'cardLeave',cls:'a-blue',tab:'audit',sel:'absSel',val:'已申請'},
+  noapp:{id:'cardNoApp',cls:'a-orange',tab:'audit',sel:'absSel',val:'未申請請假單'},
+  ot:{id:'cardOt',cls:'a-yellow',tab:'ot',sel:'otSel',val:''},
+  'ot-no-reason':{id:'cardOtNR',cls:'a-red',tab:'ot',sel:'otSel',val:'未填原因'},
+  'ot-no-app':{id:'cardOtNA',cls:'a-orange',tab:'ot',sel:'otSel',val:'實際加班-未申請'},
+  'ot-ok':{id:'cardOtOk',cls:'a-green',tab:'ot',sel:'otSel',val:'實際加班-已申請'}
+};
+const ABS_CARDS=['cardMiss','cardLeave','cardNoApp'];
+const OT_CARDS=['cardOt','cardOtNR','cardOtNA','cardOtOk'];
+const ALL_CLS=['a-red','a-blue','a-orange','a-green','a-yellow'];
+
+function statFilter(type){
+  const cfg=CMAP[type];
+  const isAbs=['miss','leave','noapp'].includes(type);
+  const curF=isAbs?aAbsF:aOtF;
+
+  // Toggle off
+  if(curF===type){
+    clearCards(isAbs?ABS_CARDS:OT_CARDS);
+    if(isAbs){aAbsF='';G('absSel').value='';applyAbs();}
+    else{aOtF='';G('otSel').value='';applyOt();}
+    return;
+  }
+
+  clearCards(isAbs?ABS_CARDS:OT_CARDS);
+  G(cfg.id).classList.add(cfg.cls);
+  if(isAbs){aAbsF=type;G('absSel').value=cfg.val;switchTab(cfg.tab,document.querySelectorAll('.tab')[0]);applyAbs();}
+  else{aOtF=type;G('otSel').value=cfg.val;switchTab(cfg.tab,document.querySelectorAll('.tab')[1]);applyOt();}
+}
+
+function clearCards(ids){
+  ids.forEach(id=>{const el=G(id);if(el)ALL_CLS.forEach(c=>el.classList.remove(c));});
+}
+
+// ─── FILTERS ───
+function applyAbs(){
+  const q=G('absQ').value.toLowerCase(),sv=G('absSel').value;
+  const rows=G('tblAbs').querySelectorAll('tbody tr');
+  let v=0;
+  rows.forEach(r=>{const ok=(!q||r.textContent.toLowerCase().includes(q))&&(!sv||r.textContent.includes(sv));r.style.display=ok?'':'none';if(ok)v++;});
+  S('absCnt','顯示 '+v+' 筆');
+}
+function applyOt(){
+  const q=G('otQ').value.toLowerCase(),sv=G('otSel').value;
+  const rows=G('tblOt').querySelectorAll('tbody tr');
+  let v=0;
+  rows.forEach(r=>{const ok=(!q||r.textContent.toLowerCase().includes(q))&&(!sv||r.textContent.includes(sv));r.style.display=ok?'':'none';if(ok)v++;});
+  S('otCnt','顯示 '+v+' 筆');
+}
+function fgen(tid,q){
+  G(tid).querySelectorAll('tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});
+}
+
+// ─── TAB ───
+function switchTab(name,el){
+  ['audit','ot','att','lv','ov'].forEach(t=>G('tab-'+t).style.display='none');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  G('tab-'+name).style.display='';
+  el.classList.add('active');
+}
+
+// ─── SORT ───
+const SS={};
+function srt(tid,col){
+  const tb=G(tid).querySelector('tbody');
+  const rows=Array.from(tb.querySelectorAll('tr'));
+  const k=tid+':'+col;const asc=SS[k]!==true;SS[k]=asc;
+  rows.sort((a,b)=>{const av=a.cells[col]?.textContent.trim()||'',bv=b.cells[col]?.textContent.trim()||'';return asc?av.localeCompare(bv,'zh-TW'):bv.localeCompare(av,'zh-TW');});
+  rows.forEach(r=>tb.appendChild(r));
+}
+
+// ─── EXPORT ───
+function exportResult(){
+  const wb=XLSX.utils.book_new();
+  const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期']];
+  absRows.forEach(r=>ah.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),r['卡別']||'',r['比對結果']||'',r._as,r._lt,r._ld]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ah),'未打卡稽核');
+  const oh=[['員工編號','姓名','部門','工作日期','卡別','超時出勤','超時出勤原因','稽核狀態','加班申請日期']];
+  otRows.forEach(r=>oh.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),r['卡別']||'',r['超時出勤']||'',r._or,r._os,r._oad]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(oh),'超時出勤稽核');
+  XLSX.writeFile(wb,`打卡稽核結果_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('稽核結果已匯出','success');
+}
+
+// ─── CLEAR ───
+function clearAll(){
+  attData=leaveData=otData=null;absRows=otRows=[];aAbsF=aOtF='';
+  clearCards([...ABS_CARDS,...OT_CARDS]);
+  [1,2,3].forEach(n=>{G('name'+n).textContent='點擊或拖曳上傳 .xlsx';const s=G('status'+n);s.textContent='尚未載入';s.className='ups-t';G('card'+n).classList.remove('loaded');});
+  G('dashSection').style.display='none';G('tabsSection').style.display='none';
+  G('emptyState').style.display='';G('exportBtn').style.display='none';
+  G('runBtn').disabled=true;G('lastUpdate').textContent='';
+}
+
+// ─── UTILS ───
+function G(id){return document.getElementById(id)}
+function S(id,v){const e=G(id);if(e)e.textContent=v}
+function toast(msg,type=''){
+  const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+
+// ════════════════════════════════════════
+//  EMPLOYEE DATABASE  (persisted via storage API)
+// ════════════════════════════════════════
+let empDB = {}; // { empId: {id, name, email} }
+
+async function loadEmpDB(){
+  try{
+    const r = await window.storage.get('empDB');
+    if(r) empDB = JSON.parse(r.value);
+  } catch(e){ empDB={}; }
+  refreshEmpCount();
+}
+
+async function saveEmpDB(){
+  try{ await window.storage.set('empDB', JSON.stringify(empDB)); }
+  catch(e){ console.warn('storage save failed',e); }
+  refreshEmpCount();
+}
+
+function refreshEmpCount(){
+  const n = Object.keys(empDB).length;
+  S('empCount', n ? `(${n})` : '');
+  G('hdrEmpBtn').className = n ? 'hdr-btn has-data' : 'hdr-btn';
+}
+
+function openEmpModal(){
+  renderEmpList();
+  G('empModal').style.display='flex';
+  const n=Object.keys(empDB).length;
+  S('empImportHint', n ? '' : '尚無員工，可從稽核資料快速匯入');
+}
+function closeEmpModal(){ G('empModal').style.display='none'; }
+
+function empInputChange(){
+  const id=G('empIdInp').value.trim();
+  const name=G('empNameInp').value.trim();
+  const email=G('empEmailInp').value.trim();
+  G('empAddBtn').disabled=!(id&&name&&email);
+}
+
+function addEmp(){
+  const id=G('empIdInp').value.trim();
+  const name=G('empNameInp').value.trim();
+  const email=G('empEmailInp').value.trim();
+  if(!id||!name||!email)return;
+  empDB[id]={id,name,email};
+  saveEmpDB();
+  G('empIdInp').value='';G('empNameInp').value='';G('empEmailInp').value='';
+  G('empAddBtn').disabled=true;
+  renderEmpList();
+  toast(`已新增 ${name}（${id}）`,'success');
+}
+
+function delEmp(id){
+  const e=empDB[id];
+  if(!e)return;
+  if(!confirm(`確定刪除 ${e.name}（${id}）？`))return;
+  delete empDB[id];
+  saveEmpDB();
+  renderEmpList();
+}
+
+function editEmp(id){
+  // 切換該卡片為編輯模式
+  const card=document.querySelector(`.emp-card[data-id="${id}"]`);
+  if(!card)return;
+  const e=empDB[id];
+  card.innerHTML=`
+    <div class="emp-avatar">${e.name.slice(0,1)}</div>
+    <div class="emp-info" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1">
+      <input class="emp-input" id="edit-name-${id}" value="${e.name}" placeholder="姓名" style="font-size:12px;padding:5px 8px">
+      <input class="emp-input" id="edit-id-${id}" value="${e.id}" placeholder="員工編號" style="font-size:12px;padding:5px 8px;font-family:'JetBrains Mono',monospace">
+      <input class="emp-input" id="edit-email-${id}" value="${e.email}" placeholder="Email" style="font-size:12px;padding:5px 8px;grid-column:1/-1">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+      <button class="btn btn-p" onclick="saveEditEmp('${id}')" style="font-size:11px;padding:4px 10px">✓ 儲存</button>
+      <button class="btn btn-g" onclick="renderEmpList()" style="font-size:11px;padding:4px 10px">取消</button>
+    </div>`;
+  // 聚焦 email 欄位（通常是最需要補填的）
+  const emailInp=document.getElementById(`edit-email-${id}`);
+  if(emailInp){ emailInp.focus(); emailInp.select(); }
+}
+
+function saveEditEmp(oldId){
+  const newName=document.getElementById(`edit-name-${oldId}`)?.value.trim();
+  const newId=document.getElementById(`edit-id-${oldId}`)?.value.trim();
+  const newEmail=document.getElementById(`edit-email-${oldId}`)?.value.trim();
+  if(!newName||!newId||!newEmail){ toast('姓名、員工編號、Email 均為必填','error'); return; }
+  // 如果員工編號改了，需要處理舊 key
+  if(newId!==oldId){
+    delete empDB[oldId];
+  }
+  empDB[newId]={id:newId,name:newName,email:newEmail};
+  saveEmpDB();
+  renderEmpList();
+  toast(`已更新 ${newName} 的資料`,'success');
+}
+
+function renderEmpList(){
+  const q=(G('empSearch')?.value||'').toLowerCase();
+  const list=G('empList');
+  const entries=Object.values(empDB).filter(e=>
+    !q||e.id.toLowerCase().includes(q)||e.name.toLowerCase().includes(q)||e.email.toLowerCase().includes(q)
+  );
+  S('empListCount', `共 ${Object.keys(empDB).length} 人`);
+  if(!entries.length){
+    list.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted2);font-size:13px">${Object.keys(empDB).length?'無符合搜尋的員工':'尚無員工資料，請新增或從稽核資料匯入'}</div>`;
+    return;
+  }
+  list.innerHTML=entries.map(e=>{
+    const initials=e.name.slice(0,1);
+    const emailTag=e.email
+      ?`<span style="color:var(--accent)">${e.email}</span>`
+      :`<span style="color:var(--orange);font-weight:600">⚠ 未設定 Email</span>`;
+    return`<div class="emp-card" data-id="${e.id}">
+      <div class="emp-avatar">${initials}</div>
+      <div class="emp-info">
+        <div class="emp-name">${e.name} <span style="color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace">${e.id}</span></div>
+        <div class="emp-meta">${emailTag}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        <button class="emp-del" onclick="editEmp('${e.id}')" title="編輯" style="color:var(--accent);font-size:13px">✏️</button>
+        <button class="emp-del" onclick="delEmp('${e.id}')" title="刪除">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function importEmpFromAudit(){
+  if(!attData){ toast('請先執行稽核','error'); return; }
+  let added=0;
+  const seen=new Set();
+  attData.forEach(r=>{
+    const id=String(r['員工編號']||'').trim();
+    const name=String(r['姓名']||'').trim();
+    if(!id||!name||seen.has(id))return;
+    seen.add(id);
+    if(!empDB[id]){ empDB[id]={id,name,email:''}; added++; }
+  });
+  saveEmpDB();
+  renderEmpList();
+  S('empImportHint', added ? `已匯入 ${added} 名新員工（Email 請手動填入）` : '所有員工已存在');
+  toast(`從打卡資料匯入 ${added} 名員工`,'success');
+}
+
+function exportEmpDB(){
+  const wb=XLSX.utils.book_new();
+  const data=[['員工編號','姓名','Email'],...Object.values(empDB).map(e=>[e.id,e.name,e.email])];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'員工資料庫');
+  XLSX.writeFile(wb,'員工資料庫.xlsx');
+  toast('員工資料庫已匯出','success');
+}
+
+// ════════════════════════════════════════
+//  EMAIL TEMPLATES  (persisted)
+// ════════════════════════════════════════
+const DEFAULT_TPL = {
+  leave:{
+    sender:'人資部門',
+    subj:'【請假申請提醒】{{姓名}} 您好，請盡快補申請請假單',
+    body:`{{姓名}} 您好，
+
+系統稽核發現您在以下日期有未打卡記錄，且尚未提交請假申請：
+
+{{異常日期清單}}
+
+請您於收到本通知後 24 小時內，至系統補填請假申請單，以利出勤記錄正確。
+
+如有任何疑問，請洽人資部門。
+
+此為系統自動發送通知
+{{今日日期}}`
+  },
+  ot:{
+    sender:'人資部門',
+    subj:'【加班申請提醒】{{姓名}} 您好，請盡快補申請加班單',
+    body:`{{姓名}} 您好，
+
+系統稽核發現您在以下日期有實際加班記錄，但尚未提交加班申請：
+
+{{異常日期清單}}
+
+請您於收到本通知後 24 小時內，至系統補填加班申請單，以利薪資結算正確。
+
+如有任何疑問，請洽人資部門。
+
+此為系統自動發送通知
+{{今日日期}}`
+  }
+};
+
+let emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
+
+async function loadTpls(){
+  try{
+    const r = await window.storage.get('emailTpls');
+    if(r) emailTpls = JSON.parse(r.value);
+    else emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
+  }catch(e){ emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} }; }
+}
+
+async function saveTpl(){
+  emailTpls.leave.sender=G('tplLeaveSender').value;
+  emailTpls.leave.subj=G('tplLeaveSubj').value;
+  emailTpls.leave.body=G('tplLeaveBody').value;
+  emailTpls.ot.sender=G('tplOtSender').value;
+  emailTpls.ot.subj=G('tplOtSubj').value;
+  emailTpls.ot.body=G('tplOtBody').value;
+  try{ await window.storage.set('emailTpls', JSON.stringify(emailTpls)); }
+  catch(e){ console.warn(e); }
+  toast('模板已儲存','success');
+  closeTplModal();
+}
+
+function resetTpl(){
+  if(!confirm('確定要重設為預設模板？'))return;
+  emailTpls={ leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
+  fillTplEditor();
+  toast('已重設為預設模板');
+}
+
+async function openTplModal(){
+  fillTplEditor();
+  const url=await loadGasUrl();
+  if(G('gasUrlInput')){ G('gasUrlInput').value=url; updateGasConnBadge(url); }
+  G('tplModal').style.display='flex';
+}
+function closeTplModal(){ G('tplModal').style.display='none'; }
+
+function fillTplEditor(){
+  G('tplLeaveSender').value=emailTpls.leave.sender||'';
+  G('tplLeaveSubj').value=emailTpls.leave.subj||'';
+  G('tplLeaveBody').value=emailTpls.leave.body||'';
+  G('tplOtSender').value=emailTpls.ot.sender||'';
+  G('tplOtSubj').value=emailTpls.ot.subj||'';
+  G('tplOtBody').value=emailTpls.ot.body||'';
+  updateTplPreview('leave');
+  ['tplLeaveBody','tplLeaveSubj','tplOtBody','tplOtSubj'].forEach(id=>{
+    G(id).oninput=()=>updateTplPreview(id.includes('Leave')?'leave':'ot');
+  });
+}
+
+function updateTplPreview(type){
+  const subj=G(`tpl${type==='leave'?'Leave':'Ot'}Subj`).value;
+  const body=G(`tpl${type==='leave'?'Leave':'Ot'}Body`).value;
+  const sample=renderTpl(type==='leave'?emailTpls.leave.subj:subj,
+                          type==='leave'?emailTpls.leave.body:body,
+                          {姓名:'王小明',員工編號:'DLS0001',部門:'行銷部',異常日期清單:'• 2026/03/01 (上班)\n• 2026/03/03 (下班)'});
+  G(`tpl${type==='leave'?'Leave':'Ot'}Preview`).textContent=`主旨：${G(`tpl${type==='leave'?'Leave':'Ot'}Subj`).value}\n\n${G(`tpl${type==='leave'?'Leave':'Ot'}Body`).value}`.replace('{{姓名}}','王小明').replace('{{員工編號}}','DLS0001').replace('{{部門}}','行銷部').replace('{{異常日期清單}}','• 2026/03/01 (上班)\n• 2026/03/03 (下班)').replace('{{今日日期}}',new Date().toLocaleDateString('zh-TW'));
+}
+
+function switchTplTab(type, el){
+  document.querySelectorAll('.tpl-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  G('tplLeave').style.display=type==='leave'?'':'none';
+  G('tplOt').style.display=type==='ot'?'':'none';
+}
+
+function insertVar(textareaId, variable){
+  const ta=G(textareaId);
+  const s=ta.selectionStart,e=ta.selectionEnd;
+  ta.value=ta.value.slice(0,s)+variable+ta.value.slice(e);
+  ta.selectionStart=ta.selectionEnd=s+variable.length;
+  ta.focus();
+  updateTplPreview(textareaId.includes('Leave')?'leave':'ot');
+}
+
+function renderTpl(subj, body, vars){
+  let s=subj,b=body;
+  Object.entries(vars).forEach(([k,v])=>{
+    s=s.replaceAll('{{'+k+'}}',v);
+    b=b.replaceAll('{{'+k+'}}',v);
+  });
+  b=b.replaceAll('{{今日日期}}',new Date().toLocaleDateString('zh-TW'));
+  s=s.replaceAll('{{今日日期}}',new Date().toLocaleDateString('zh-TW'));
+  return{subj:s,body:b};
+}
+
+// ════════════════════════════════════════
+//  SEND EMAIL MODAL
+// ════════════════════════════════════════
+let sendType='';  // 'leave' or 'ot'
+
+function openSendModal(type){
+  sendType=type;
+
+  // Build target list: group by empId, collect anomaly dates
+  const targets={};
+  if(type==='leave'){
+    absRows.filter(r=>r._as==='未申請請假單').forEach(r=>{
+      const id=String(r['員工編號']||'').trim();
+      if(!targets[id]) targets[id]={id,name:r['姓名']||'',dept:r['部門']||'',dates:[]};
+      targets[id].dates.push(`${nd(r['工作日期'])} (${r['卡別']||''})`);
+    });
+  } else {
+    otRows.filter(r=>r._os==='實際加班-未申請'||r._os==='未填原因').forEach(r=>{
+      const id=String(r['員工編號']||'').trim();
+      if(!targets[id]) targets[id]={id,name:r['姓名']||'',dept:r['部門']||'',dates:[],statuses:[]};
+      targets[id].dates.push(`${nd(r['工作日期'])} (${r._os})`);
+    });
+  }
+
+  const list=Object.values(targets);
+  G('sendModalTitle').textContent = type==='leave' ? '📧 寄發未申請請假通知' : '📧 寄發未申請加班通知';
+  S('sendModalDesc', `共 ${list.length} 名員工需要通知`);
+
+  let hasNoEmail=false;
+  G('sendList').innerHTML=list.map(t=>{
+    const emp=empDB[t.id];
+    const email=emp?.email||'';
+    if(!email)hasNoEmail=true;
+    const dateStr=t.dates.map(d=>`• ${d}`).join('\n');
+    return`<div class="send-item${email?'':' no-email'}" data-id="${t.id}" data-dates="${encodeURIComponent(dateStr)}" data-name="${t.name}" data-dept="${t.dept}">
+      <input type="checkbox" ${email?'checked':''} ${email?'':'disabled'} onchange="updateSendCount()">
+      <div class="send-item-info">
+        <div class="send-item-name">${t.name} <span style="color:var(--muted);font-size:11px;font-family:'JetBrains Mono'">${t.id}</span> · ${t.dept}</div>
+        <div class="send-item-detail">${t.dates.slice(0,3).join('、')}${t.dates.length>3?` 等共 ${t.dates.length} 筆`:''}</div>
+        <div class="send-item-email">${email||'⚠ 未設定 Email'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  G('noEmailWarn').style.display=hasNoEmail?'':'none';
+  G('sendProgress').style.display='none';
+  G('sendFireBtn').disabled=false;
+  G('sendFireBtn').textContent='📧 一鍵發送';
+  updateSendCount();
+  G('sendModal').style.display='flex';
+  openSendModal_updateGasStatus();
+}
+
+function closeSendModal(){ G('sendModal').style.display='none'; }
+
+function selectAllSend(val){
+  G('sendList').querySelectorAll('input[type=checkbox]:not(:disabled)').forEach(c=>c.checked=val);
+  updateSendCount();
+}
+
+function updateSendCount(){
+  const checked=G('sendList').querySelectorAll('input[type=checkbox]:checked').length;
+  S('sendSelectedCount',`已選 ${checked} 人`);
+}
+
+async function fireSendEmail(){
+  const items=[...G('sendList').querySelectorAll('.send-item')];
+  const selected=items.filter(item=>item.querySelector('input[type=checkbox]')?.checked);
+  if(!selected.length){ toast('請勾選至少一位員工','error'); return; }
+
+  const gasUrl=await loadGasUrl();
+  if(!gasUrl){
+    toast('請先完成 Google Apps Script 連線設定','error');
+    closeSendModal(); openTplModal(); return;
+  }
+
+  const tpl=sendType==='leave'?emailTpls.leave:emailTpls.ot;
+  G('sendFireBtn').disabled=true; G('sendFireBtn').textContent='發送中...';
+  G('sendProgress').style.display='block';
+  let ok=0,fail=0,failNames=[];
+
+  for(let i=0;i<selected.length;i++){
+    const item=selected[i];
+    const id=item.dataset.id,emp=empDB[id];
+    const name=item.dataset.name,dept=item.dataset.dept;
+    const dateStr=decodeURIComponent(item.dataset.dates);
+    G('sendFill').style.width=Math.round(((i+1)/selected.length)*100)+'%';
+    S('sendProgressText',`(${i+1}/${selected.length}) 正在發送給 ${name}…`);
+    const {subj,body}=renderTpl(tpl.subj,tpl.body,{姓名:name,員工編號:id,部門:dept,異常日期清單:dateStr});
+    try{
+      // 使用 GET + 參數，避免 CORS 問題
+      const params=new URLSearchParams({
+        to: emp.email,
+        subject: subj,
+        body: body,
+        sender: tpl.sender||'人資部門'
+      });
+      const res=await fetch(`${gasUrl}?${params.toString()}`,{method:'GET',redirect:'follow'});
+      const j=await res.json();
+      if(j.status==='ok'){ok++;}else{fail++;failNames.push(name);}
+    }catch(e){fail++;failNames.push(name);}
+  }
+
+  G('sendFill').style.width='100%';
+  if(fail===0){
+    S('sendProgressText',`✓ 全部發送成功！共 ${ok} 封`);
+    toast(`成功從公司 Gmail 發送 ${ok} 封通知 ✓`,'success');
+  }else{
+    S('sendProgressText',`完成：成功 ${ok} 封，失敗 ${fail} 封（${failNames.join('、')}）`);
+    toast(`發送完成，${fail} 封失敗，請確認 GAS 設定`,'error');
+  }
+  G('sendFireBtn').textContent='✓ 完成';
+}
+
+// ─── GAS URL ───
+let _gasUrl='';
+async function loadGasUrl(){
+  if(_gasUrl) return _gasUrl;
+  try{ const r=await window.storage.get('gasUrl');_gasUrl=r?r.value:''; }catch(e){ _gasUrl=''; }
+  return _gasUrl;
+}
+async function saveGasUrl(){
+  _gasUrl=G('gasUrlInput').value.trim();
+  try{ await window.storage.set('gasUrl',_gasUrl); }catch(e){}
+  updateGasConnBadge(_gasUrl);
+  toast('GAS URL 已儲存','success');
+}
+function onGasUrlChange(){
+  updateGasConnBadge(G('gasUrlInput').value.trim());
+  G('gasTestResult').textContent='';
+}
+function updateGasConnBadge(url){
+  const badge=G('gasConnBadge');if(!badge)return;
+  if(!url){badge.textContent='未設定';badge.style.background='var(--bg3)';badge.style.color='var(--muted)';return;}
+  if(url.includes('script.google.com')){badge.textContent='URL 已設定';badge.style.background='var(--yl)';badge.style.color='var(--yellow)';}
+  else{badge.textContent='格式異常';badge.style.background='var(--rl)';badge.style.color='var(--red)';}
+}
+async function testGasConn(){
+  const url=G('gasUrlInput').value.trim(),res=G('gasTestResult'),btn=G('gasTestBtn');
+  if(!url){res.textContent='請先輸入 GAS URL';res.style.color='var(--orange)';return;}
+  btn.disabled=true;btn.textContent='測試中…';
+  res.textContent='連線中…';res.style.color='var(--muted)';
+  try{
+    // GET 方式測試，完全無 CORS 問題
+    const r=await fetch(`${url}?_test=1`,{method:'GET',redirect:'follow'});
+    const j=await r.json();
+    if(j.status==='ok'){
+      res.innerHTML='<span style="color:var(--green);font-weight:600">✓ 連線成功！Gmail 可正常發送</span>';
+      G('gasConnBadge').textContent='✓ 已連線';G('gasConnBadge').style.background='var(--gl)';G('gasConnBadge').style.color='var(--green)';
+    }else{
+      res.innerHTML='<span style="color:var(--orange)">⚠ GAS 回傳異常，請確認程式碼是否已重新部署新版本</span>';
+    }
+  }catch(e){
+    res.innerHTML='<span style="color:var(--red)">✕ 連線失敗（'+e.message+'）</span>';
+  }
+  btn.disabled=false;btn.textContent='🔌 測試連線';
+}
+function copyGasCode(){
+  const code=`function doGet(e) {
+  try {
+    const p = e.parameter;
+
+    // 身份驗證
+    if (p.action === 'whoami') {
+      const email = Session.getActiveUser().getEmail();
+      return buildResponse({status:'ok', email:email, name:email.split('@')[0]});
+    }
+
+    // 連線測試
+    if (p._test) {
+      return buildResponse({status:'ok', message:'connected'});
+    }
+
+    // 寄送 Email
+    GmailApp.sendEmail(
+      decodeURIComponent(p.to),
+      decodeURIComponent(p.subject),
+      decodeURIComponent(p.body),
+      { name: decodeURIComponent(p.sender || '%E4%BA%BA%E8%B3%87%E9%83%A8%E9%96%80') }
+    );
+    return buildResponse({status:'ok'});
+
+  } catch(err) {
+    return buildResponse({status:'error', message:err.toString()});
+  }
+}
+
+function doPost(e) { return doGet(e); }
+
+function buildResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+  navigator.clipboard.writeText(code).then(()=>{
+    G('copyGasBtn').textContent='已複製 ✓';setTimeout(()=>{G('copyGasBtn').textContent='複製';},2000);
+  });
+}
+async function openSendModal_updateGasStatus(){
+  const url=await loadGasUrl();const bar=G('sendGasBar');if(!bar)return;
+  if(url&&url.includes('script.google.com')){
+    bar.style.background='var(--gl)';bar.style.border='1px solid rgba(22,163,74,.25)';
+    bar.innerHTML=`<span style="color:var(--green);font-weight:600">✓ Gmail 直接發送（Google Apps Script 已連線）</span><span style="color:var(--green);font-size:11px">　點擊發送後將直接從公司信箱寄出</span>`;
+  }else{
+    bar.style.background='var(--rl)';bar.style.border='1px solid rgba(220,38,38,.2)';
+    bar.innerHTML=`<span style="color:var(--red);font-weight:600">⚠ 尚未設定 Google Apps Script</span><button class="btn btn-g" onclick="closeSendModal();openTplModal()" style="font-size:11px;padding:4px 10px;margin-left:10px">前往設定 →</button>`;
+  }
+}
+
+
+
+
+
+// ════════════════════════════════════════
+//  AUTH & LOGIN  —  Google OAuth via GSI
+// ════════════════════════════════════════
+let currentUser = null;
+let whitelist   = {};
+
+const WL_KEY      = 'whitelist';
+const SESSION_KEY = 'session_user';
+const CLIENT_KEY  = 'google_client_id';
+
+// ── 收合 Client ID 區塊 ──
+function toggleClientSection() {
+  const sec = G('clientIdSection');
+  const arrow = G('clientIdArrow');
+  const open = sec.style.display === 'none' || sec.style.display === '';
+  sec.style.display = open ? '' : 'none';
+  arrow.textContent = open ? '▼' : '▶';
+}
+
+// ── 初始化 ──
+async function initAuth() {
+  await loadWhitelist();
+
+  // 有效 session 直接進入
+  try {
+    const s = await window.storage.get(SESSION_KEY);
+    if (s) {
+      const u = JSON.parse(s.value);
+      if (whitelist[u.email] || Object.keys(whitelist).length === 0) {
+        currentUser = u;
+        enterApp(); return;
+      }
+    }
+  } catch(e) {}
+
+  // 讀取已儲存的 Client ID 填入欄位
+  try {
+    const c = await window.storage.get(CLIENT_KEY);
+    if (c && G('clientIdInput')) G('clientIdInput').value = c.value;
+  } catch(e) {}
+
+  G('loginScreen').style.display = 'flex';
+}
+
+// ── Whitelist CRUD ──
+async function loadWhitelist() {
+  try { const r = await window.storage.get(WL_KEY); whitelist = r ? JSON.parse(r.value) : {}; }
+  catch(e) { whitelist = {}; }
+}
+async function saveWhitelist() {
+  try { await window.storage.set(WL_KEY, JSON.stringify(whitelist)); } catch(e) {}
+}
+
+// ── 儲存 Client ID ──
+async function saveClientId() {
+  const id = G('clientIdInput').value.trim();
+  if (!id) { toast('請輸入 Client ID', 'error'); return; }
+  try { await window.storage.set(CLIENT_KEY, id); } catch(e) {}
+  G('clientIdSaved').textContent = '✓ 已儲存';
+  setTimeout(() => { if(G('clientIdSaved')) G('clientIdSaved').textContent = ''; }, 2000);
+}
+
+// ── 主登入流程 ──
+function startGoogleLogin() {
+  const btn    = G('loginBtn');
+  const status = G('loginStatus');
+  const clientId = G('clientIdInput').value.trim();
+
+  if (!clientId) {
+    status.textContent = '請先輸入 Google Client ID（展開上方設定）';
+    status.className = 'login-status err';
+    G('clientIdSection').style.display = '';
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = '載入 Google 登入服務…';
+  status.className = 'login-status';
+
+  if (window.google?.accounts?.id) {
+    triggerGsiLogin(clientId);
+  } else {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload  = () => triggerGsiLogin(clientId);
+    s.onerror = () => {
+      status.textContent = '無法載入 Google 登入，請確認網路連線';
+      status.className = 'login-status err';
+      btn.disabled = false;
+    };
+    document.head.appendChild(s);
+  }
+}
+
+function triggerGsiLogin(clientId) {
+  const status = G('loginStatus');
+  const btn    = G('loginBtn');
+
+  // 初始化 GSI — 使用 popup 模式，不需要 redirect URI
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: onGsiCredential,
+    auto_select: false,
+    cancel_on_tap_outside: false,
+    ux_mode: 'popup',
+  });
+
+  // 先嘗試 One Tap；若被擋則用按鈕 popup
+  google.accounts.id.prompt(note => {
+    if (note.isNotDisplayed() || note.isSkippedMoment()) {
+      // One Tap 被封鎖，改用 renderButton 的 popup 登入
+      status.textContent = '請選擇 Google 帳號…';
+      // 建立隱藏按鈕並立即點擊
+      const wrap = document.getElementById('gsi_btn_wrap');
+      wrap.innerHTML = '';
+      google.accounts.id.renderButton(wrap, {
+        type: 'standard', size: 'large', theme: 'outline',
+        text: 'signin_with', shape: 'rectangular', width: 320
+      });
+      wrap.querySelector('div[role=button]')?.click();
+    }
+  });
+}
+
+function onGsiCredential(response) {
+  try {
+    // JWT payload — base64url decode
+    const parts   = response.credential.split('.');
+    const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+    handleVerifiedUser(payload.email, payload.name || payload.email.split('@')[0], payload.picture || '');
+  } catch(e) {
+    G('loginStatus').textContent = '登入失敗：' + e.message;
+    G('loginStatus').className = 'login-status err';
+    G('loginBtn').disabled = false;
+  }
+}
+
+async function handleVerifiedUser(email, name, picture) {
+  const status = G('loginStatus');
+  const btn    = G('loginBtn');
+
+  // 首次登入 → 自動成為管理員
+  if (Object.keys(whitelist).length === 0) {
+    whitelist[email] = { email, role: 'admin', addedAt: new Date().toISOString() };
+    await saveWhitelist();
+    status.innerHTML = `✓ 歡迎，${name}！首次登入已授予管理員權限`;
+    status.className = 'login-status ok';
+    setTimeout(() => loginSuccess(email, name, picture, 'admin'), 900);
+    return;
+  }
+
+  const entry = whitelist[email];
+  if (!entry) {
+    status.innerHTML = `❌ <strong>${email}</strong> 沒有登入權限，請聯絡管理員`;
+    status.className = 'login-status err';
+    btn.disabled = false;
+    return;
+  }
+
+  status.textContent = `✓ 歡迎回來，${name}！`;
+  status.className = 'login-status ok';
+  setTimeout(() => loginSuccess(email, name, picture, entry.role), 700);
+}
+
+async function loginSuccess(email, name, picture, role) {
+  currentUser = { email, name, picture, role };
+  try { await window.storage.set(SESSION_KEY, JSON.stringify(currentUser)); } catch(e) {}
+  enterApp();
+}
+
+function enterApp() {
+  G('loginScreen').style.display = 'none';
+  G('mainHdr').style.display = '';
+  G('appContent').style.display = '';
+
+  // User badge
+  const avatar = G('userAvatarTxt');
+  if (currentUser.picture) {
+    avatar.innerHTML = `<img src="${currentUser.picture}" style="width:24px;height:24px;border-radius:50%;display:block">`;
+    avatar.style.background = 'none';
+  } else {
+    avatar.textContent = (currentUser.name || currentUser.email).slice(0,1).toUpperCase();
+    avatar.style.background = 'var(--accent)';
+  }
+  G('userEmailTxt').textContent = currentUser.name || currentUser.email;
+  G('userBadge').style.display = 'flex';
+  if (currentUser.role === 'admin') G('wlBtn').style.display = '';
+}
+
+function logout() {
+  if (!confirm('確定要登出嗎？')) return;
+  if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
+  currentUser = null;
+  try { window.storage.delete(SESSION_KEY); } catch(e) {}
+  G('loginScreen').style.display = 'flex';
+  G('mainHdr').style.display = 'none';
+  G('appContent').style.display = 'none';
+  G('userBadge').style.display = 'none';
+  G('wlBtn').style.display = 'none';
+  G('loginStatus').textContent = '';
+  G('loginStatus').className = 'login-status';
+  G('loginBtn').disabled = false;
+}
+
+// ── Whitelist Modal ──
+function openWlModal()  { renderWlList(); G('wlModal').style.display = 'flex'; }
+function closeWlModal() { G('wlModal').style.display = 'none'; }
+
+async function addWlEntry() {
+  const email = G('wlEmailInp').value.trim().toLowerCase();
+  const role  = G('wlRoleInp').value;
+  if (!email.includes('@')) { toast('請輸入有效的 Email', 'error'); return; }
+  if (whitelist[email])     { toast('此帳號已在清單中', 'error'); return; }
+  whitelist[email] = { email, role, addedAt: new Date().toISOString() };
+  await saveWhitelist();
+  G('wlEmailInp').value = '';
+  renderWlList();
+  toast(`已新增：${email}（${role === 'admin' ? '管理員' : '一般使用者'}）`, 'success');
+}
+
+async function delWlEntry(email) {
+  if (email === currentUser?.email) { toast('不能移除自己的帳號', 'error'); return; }
+  if (!confirm(`確定移除 ${email} 的登入權限？`)) return;
+  delete whitelist[email];
+  await saveWhitelist();
+  renderWlList();
+  toast(`已移除 ${email}`, 'success');
+}
+
+async function changeWlRole(email, newRole) {
+  if (!whitelist[email]) return;
+  whitelist[email].role = newRole;
+  await saveWhitelist();
+  toast(`已更新 ${email} 為${newRole === 'admin' ? '管理員' : '一般使用者'}`, 'success');
+}
+
+function renderWlList() {
+  const entries = Object.values(whitelist);
+  S('wlCount', `共 ${entries.length} 個帳號`);
+  const list = G('wlList');
+  if (!entries.length) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted2);font-size:13px">尚無授權帳號</div>';
+    return;
+  }
+  list.innerHTML = entries.map(e => {
+    const isSelf    = e.email === currentUser?.email;
+    const addedDate = e.addedAt ? new Date(e.addedAt).toLocaleDateString('zh-TW') : '';
+    return `<div class="wl-item">
+      <span class="wl-email">${e.email}${isSelf ? ' <span style="font-size:10px;color:var(--muted2)">(目前登入)</span>' : ''}</span>
+      <select class="emp-input" onchange="changeWlRole('${e.email}',this.value)" style="min-width:100px;font-size:11px;padding:3px 7px" ${isSelf?'disabled':''}>
+        <option value="user"  ${e.role==='user' ?'selected':''}>一般使用者</option>
+        <option value="admin" ${e.role==='admin'?'selected':''}>管理員</option>
+      </select>
+      <span style="font-size:11px;color:var(--muted2);white-space:nowrap">${addedDate}</span>
+      ${isSelf ? '<div style="width:28px"></div>' : `<button class="wl-del" onclick="delWlEntry('${e.email}')" title="移除">✕</button>`}
+    </div>`;
+  }).join('');
+}
+
+// ─── INIT ───
+loadEmpDB();
+loadTpls();
+initAuth();
+
+</script>
+</body>
+</html>
