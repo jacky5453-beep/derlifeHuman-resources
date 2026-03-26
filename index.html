@@ -1049,6 +1049,9 @@ function runAudit(){
   // Build maps
   const lvMap={};
   leaveData.forEach(l=>{
+    // 排除「已終止」狀態的請假單
+    const lvStatus=String(l['狀態']||l['銷假']||'').trim();
+    if(lvStatus==='已終止')return;
     const id=String(l['員工編號']||'').trim();
     const sd=nd(l['假勤開始日期']),ed=nd(l['假勤結束日期']);
     if(!id||!sd)return;
@@ -1058,6 +1061,9 @@ function runAudit(){
   const ovMap={};
   if(otData){
     otData.forEach(o=>{
+      // 排除「已終止」狀態的加班單
+      const ovStatus=String(o['狀態']||'').trim();
+      if(ovStatus==='已終止')return;
       const id=String(o['員工編號']||'').trim();
       const sd=nd(o['加班開始日期']),ed=nd(o['加班結束日期']);
       if(!id||!sd)return;
