@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+、<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -80,6 +80,9 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text
 .upn{font-size:13px;font-weight:500;display:flex;align-items:center;gap:7px;color:var(--text2)}
 .ups-t{margin-top:6px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
 .ups-t.ok{color:var(--green)}
+.upc-del{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:5px;border:1px solid var(--border2);background:var(--bg2);cursor:pointer;font-size:13px;display:none;align-items:center;justify-content:center;color:var(--muted);z-index:3;transition:all .15s;line-height:1}
+.upc-del:hover{background:var(--rl);border-color:var(--red);color:var(--red)}
+.upc.loaded .upc-del{display:flex}
 
 /* ACTIONS */
 .acts{display:flex;align-items:center;gap:10px;margin-bottom:20px}
@@ -325,25 +328,29 @@ tr.rm:hover td{background:#fff3ec}
   <!-- UPLOAD -->
   <div class="ups">
     <div class="upc" id="card1" ondragover="onDrag(event,'card1')" ondragleave="offDrag(event,'card1')" ondrop="onDrop(event,'card1','attendance')">
-      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'attendance')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'attendance')" id="file1">
+      <button class="upc-del" onclick="clearCard(event,1,'attendance')" title="移除此檔案">✕</button>
       <div class="upl">📋 打卡資料</div>
       <div class="upn">📂 <span id="name1">點擊或拖曳上傳 .xlsx</span></div>
       <div class="ups-t" id="status1">尚未載入</div>
     </div>
     <div class="upc" id="card2" ondragover="onDrag(event,'card2')" ondragleave="offDrag(event,'card2')" ondrop="onDrop(event,'card2','leave')">
-      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'leave')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'leave')" id="file2">
+      <button class="upc-del" onclick="clearCard(event,2,'leave')" title="移除此檔案">✕</button>
       <div class="upl">🗓 請假申請明細</div>
       <div class="upn">📂 <span id="name2">點擊或拖曳上傳 .xlsx</span></div>
       <div class="ups-t" id="status2">尚未載入</div>
     </div>
     <div class="upc" id="card3" ondragover="onDrag(event,'card3')" ondragleave="offDrag(event,'card3')" ondrop="onDrop(event,'card3','overtime')">
-      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'overtime')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'overtime')" id="file3">
+      <button class="upc-del" onclick="clearCard(event,3,'overtime')" title="移除此檔案">✕</button>
       <div class="upl">⏰ 加班申請明細 <span style="color:var(--muted2)">(選填)</span></div>
       <div class="upn">📂 <span id="name3">點擊或拖曳上傳 .xlsx</span></div>
       <div class="ups-t" id="status3">尚未載入</div>
     </div>
     <div class="upc" id="card4" ondragover="onDrag(event,'card4')" ondragleave="offDrag(event,'card4')" ondrop="onDrop(event,'card4','forgot')">
-      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'forgot')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'forgot')" id="file4">
+      <button class="upc-del" onclick="clearCard(event,4,'forgot')" title="移除此檔案">✕</button>
       <div class="upl">🔄 忘刷卡申請明細 <span style="color:var(--muted2)">(選填)</span></div>
       <div class="upn">📂 <span id="name4">點擊或拖曳上傳 .xlsx</span></div>
       <div class="ups-t" id="status4">尚未載入</div>
@@ -880,6 +887,24 @@ function onDrop(e,id,t){e.preventDefault();offDrag(e,id);const f=e.dataTransfer.
 
 // ─── FILE ───
 function loadFile(e,t){const f=e.target.files[0];if(f)processFile(f,t)}
+
+// ─── CLEAR SINGLE CARD ───
+function clearCard(e, n, type){
+  e.stopPropagation(); // don't trigger file picker
+  if(type==='attendance') attData=null;
+  else if(type==='leave') leaveData=null;
+  else if(type==='overtime') otData=null;
+  else if(type==='forgot') forgotData=null;
+  // Reset card UI
+  G('name'+n).textContent='點擊或拖曳上傳 .xlsx';
+  const s=G('status'+n); s.textContent='尚未載入'; s.className='ups-t';
+  G('card'+n).classList.remove('loaded');
+  // Reset file input so same file can be re-selected
+  const fi=G('file'+n); if(fi) fi.value='';
+  // Update run button
+  G('runBtn').disabled=!(attData&&leaveData);
+  toast(`已移除檔案，可重新上傳`, 'success');
+}
 function processFile(file,type){
   const r=new FileReader();
   r.onload=ev=>{
@@ -924,16 +949,40 @@ function parseOT(raw){
   return res;
 }
 function parseForgot(raw){
-  // Find header row: look for 申請人 or 忘刷卡時間 or 序號
+  // Find header row: look for 申請人 or 忘刷卡時間
   let hi=raw.findIndex(r=>r.some(c=>String(c).trim()==='申請人'||String(c).trim()==='忘刷卡時間'));
   if(hi<0)hi=0;
   const h=raw[hi],res=[];
   for(let i=hi+1;i<raw.length;i++){
     const r=raw[i];if(r.every(c=>c===''))continue;
     const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);
+    // Normalize 忘刷卡時間 → _forgotDate (YYYY/MM/DD)
+    o._forgotDate = parseForgotDate(o['忘刷卡時間']);
     res.push(o);
   }
   return res;
+}
+
+// Convert any date format from 忘刷卡時間 to YYYY/MM/DD
+function parseForgotDate(v){
+  if(v===null||v===undefined||v==='')return'';
+  // Numeric: Excel serial (e.g. 46918.xxx)
+  if(typeof v==='number'||(/^\d+(\.\d+)?$/.test(String(v).trim())&&parseFloat(String(v))>40000)){
+    const n=typeof v==='number'?v:parseFloat(String(v));
+    const d=XLSX.SSF.parse_date_code(n);
+    if(d)return`${d.y}/${p2(d.m)}/${p2(d.d)}`;
+  }
+  const s=String(v).trim();
+  // MM/DD/YYYY ... or M/D/YYYY
+  const m1=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m1)return`${m1[3]}/${p2(parseInt(m1[1]))}/${p2(parseInt(m1[2]))}`;
+  // YYYY/MM/DD
+  const m2=s.match(/^(\d{4})\/(\d{2})\/(\d{2})/);
+  if(m2)return`${m2[1]}/${m2[2]}/${m2[3]}`;
+  // YYYY-MM-DD
+  const m3=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m3)return`${m3[1]}/${m3[2]}/${m3[3]}`;
+  return s;
 }
 
 // ─── DATE ───
@@ -985,33 +1034,17 @@ function runAudit(){
     });
   }
 
-  // Build forgotMap: key = 姓名|日期，only 簽核完成 records
+  // Build forgotMap: key = 姓名|日期
+  // 步驟1：排除「已終止」及非「簽核完成」的申請
+  // 步驟2：以申請人姓名 + 忘刷卡日期建立 map
   const forgotMap={};
   if(forgotData){
     forgotData.forEach(f=>{
       const status=String(f['狀態']||'').trim();
+      // 只接受「簽核完成」，其餘（已終止、審核中…）全部排除
       if(status!=='簽核完成')return;
       const name=String(f['申請人']||'').trim();
-      // 忘刷卡時間 could be a date string like "03/24/2026 17:00:00" or Excel serial
-      const rawTime=f['忘刷卡時間'];
-      let d='';
-      if(rawTime||rawTime===0){
-        const s=String(rawTime).trim();
-        // Excel serial number
-        if(/^\d+(\.\d+)?$/.test(s)&&parseFloat(s)>40000){
-          const parsed=XLSX.SSF.parse_date_code(parseFloat(s));
-          if(parsed)d=`${parsed.y}/${p2(parsed.m)}/${p2(parsed.d)}`;
-        }
-        // MM/DD/YYYY HH:MM:SS
-        else if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)){
-          const parts=s.split(' ')[0].split('/');
-          if(parts.length===3)d=`${parts[2]}/${p2(parseInt(parts[0]))}/${p2(parseInt(parts[1]))}`;
-        }
-        // YYYY/MM/DD
-        else if(/^\d{4}\/\d{2}\/\d{2}/.test(s)){d=s.slice(0,10);}
-        // YYYY-MM-DD
-        else if(/^\d{4}-\d{2}-\d{2}/.test(s)){d=s.slice(0,10).replace(/-/g,'/');}
-      }
+      const d=f._forgotDate; // 已在 parseForgot 時轉換好
       if(!name||!d)return;
       const k=name+'|'+d;
       if(!forgotMap[k])forgotMap[k]=[];
@@ -1183,15 +1216,17 @@ function renderFg(rows){
   b.innerHTML=rows.map((r,i)=>{
     const status=String(r['狀態']||'').trim();
     const sb=status==='簽核完成'?`<span class="b bn">✓ 簽核完成</span>`:
-             status==='已終止'?`<span class="b bd">✕ 已終止</span>`:
+             status==='已終止'?`<span class="b bd" style="text-decoration:line-through;opacity:.6">✕ 已終止</span>`:
              `<span class="b by">${status}</span>`;
-    return`<tr>
+    const dateDisplay=r._forgotDate||(String(r['忘刷卡時間']||'').split('.')[0]);
+    const isExcluded=status!=='簽核完成';
+    return`<tr style="${isExcluded?'opacity:.5':''}">
     <td class="mono" style="color:var(--muted2)">${i+1}</td>
     <td class="mono">${r['序號']||''}</td>
     <td class="mono" style="font-size:11px;color:var(--muted)">${r['表單編號']||''}</td>
     <td style="font-weight:600">${r['申請人']||''}</td>
     <td>${r['部門']||''}</td>
-    <td class="mono">${String(r['忘刷卡時間']||'').split('.')[0]}</td>
+    <td class="mono">${dateDisplay}</td>
     <td>${sb}</td>
     <td class="mono">${r['申請日期']||''}</td></tr>`;
   }).join('');
