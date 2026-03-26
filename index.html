@@ -1,9 +1,9 @@
-index.html<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>打卡稽核系統</title>
+<title>出勤打卡比對系統</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Firebase SDK -->
 <script type="module">
@@ -262,6 +262,21 @@ tr.rm:hover td{background:#fff3ec}
 .hdr-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'Noto Sans TC',sans-serif;transition:all .15s}
 .hdr-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--al)}
 .hdr-btn.has-data{border-color:var(--green);color:var(--green);background:var(--gl)}
+
+/* ── EDITABLE LABEL ── */
+[ondblclick]{cursor:pointer;position:relative;}
+[ondblclick]:hover::after{content:'✏️';position:absolute;font-size:10px;top:-4px;right:-16px;opacity:.5;}
+.edit-inline-input{border:none;outline:2px solid var(--accent);border-radius:4px;background:var(--al);font:inherit;color:inherit;font-weight:inherit;font-size:inherit;padding:2px 6px;min-width:80px;}
+.edit-icon-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.edit-icon-box{background:#fff;border-radius:14px;padding:24px;width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.edit-icon-title{font-size:15px;font-weight:700;margin-bottom:12px;}
+.edit-icon-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:16px;max-height:260px;overflow-y:auto;}
+.edit-icon-cell{font-size:22px;text-align:center;padding:6px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:all .12s;}
+.edit-icon-cell:hover{background:var(--al);border-color:var(--accent);}
+.edit-icon-cell.selected{background:var(--al);border-color:var(--accent);}
+.edit-icon-custom{display:flex;gap:8px;align-items:center;margin-bottom:14px;}
+.edit-icon-inp{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:8px 11px;font-size:24px;text-align:center;outline:none;}
+.edit-icon-inp:focus{border-color:var(--accent);}
 </style>
 </head>
 <body>
@@ -269,8 +284,8 @@ tr.rm:hover td{background:#fff3ec}
 <!-- ════ LOGIN SCREEN ════ -->
 <div id="loginScreen" style="display:none">
   <div class="login-card">
-    <div class="login-logo">📋</div>
-    <div class="login-title">打卡稽核系統</div>
+    <div class="login-logo" id="loginLogo" ondblclick="editIcon(this)" title="雙擊更換圖示" style="cursor:pointer">📋</div>
+    <div class="login-title" id="loginTitle" ondblclick="editLabel(this)" title="雙擊編輯">出勤打卡比對系統</div>
     <div class="login-sub">此系統僅限授權人員使用<br>請使用公司 Google 帳號登入</div>
     <button class="login-google-btn" id="loginBtn" onclick="doGoogleLogin()">
       <svg class="login-google-icon" viewBox="0 0 24 24">
@@ -282,14 +297,14 @@ tr.rm:hover td{background:#fff3ec}
       使用 Google 帳號登入
     </button>
     <div class="login-status" id="loginStatus"></div>
-    <div class="login-footer">登入即表示您同意此系統僅作人資稽核用途<br>如需申請使用權限，請聯絡系統管理員</div>
+    <div class="login-footer">登入即表示您同意此系統僅作人資比對用途<br>如需申請使用權限，請聯絡系統管理員</div>
   </div>
 </div>
 
 <div class="hdr" id="mainHdr" style="display:none">
   <div class="hdr-l">
-    <div class="hdr-ico">📋</div>
-    <div><div class="hdr-t">打卡稽核系統</div><div class="hdr-s">Attendance Audit System</div></div>
+    <div class="hdr-ico" id="hdrIco" ondblclick="editIcon(this)" title="雙擊更換圖示" style="cursor:pointer">📋</div>
+    <div><div class="hdr-t" id="hdrTitle" ondblclick="editLabel(this)" title="雙擊編輯">出勤打卡比對系統</div><div class="hdr-s">Attendance Comparison System</div></div>
   </div>
   <div class="hdr-btns">
     <button class="hdr-btn" id="hdrEmpBtn" onclick="openEmpModal()">👥 員工資料庫 <span id="empCount" style="font-family:'JetBrains Mono',monospace;font-size:11px"></span></button>
@@ -331,14 +346,14 @@ tr.rm:hover td{background:#fff3ec}
 
   <!-- ACTIONS -->
   <div class="acts">
-    <button class="btn btn-p" id="runBtn" disabled onclick="runAudit()">⚡ 執行稽核</button>
-    <button class="btn btn-g" onclick="exportResult()" id="exportBtn" style="display:none">⬇ 匯出稽核結果</button>
+    <button class="btn btn-p" id="runBtn" disabled onclick="runAudit()" ondblclick="editBtnLabel(this)" title="雙擊編輯按鈕文字">⚡ 執行比對</button>
+    <button class="btn btn-g" onclick="exportResult()" id="exportBtn" ondblclick="editBtnLabel(this)" title="雙擊編輯按鈕文字" style="display:none">⬇ 匯出比對結果</button>
     <button class="btn btn-g" onclick="clearAll()">✕ 清除</button>
   </div>
 
   <!-- DASHBOARD -->
   <div id="dashSection" style="display:none">
-    <div class="db-head">📊 打卡異常稽核</div>
+    <div class="db-head">📊 打卡異常比對</div>
     <div class="db-grid">
       <div class="sc" id="cardTotal">
         <div class="sc-ico">📋</div>
@@ -359,13 +374,13 @@ tr.rm:hover td{background:#fff3ec}
       </div>
       <div class="sc click" id="cardNoApp" onclick="statFilter('noapp')">
         <div class="sc-ico">⚠️</div>
-        <div class="sc-lbl">未申請請假單</div>
+        <div class="sc-lbl">未申請假單</div>
         <div class="sc-val c-o" id="statNoApp">-</div>
         <div class="sc-hint">點擊篩選 ↓</div>
       </div>
     </div>
 
-    <div class="db-head">⏱ 超時出勤稽核</div>
+    <div class="db-head">⏱ 超時出勤比對</div>
     <div class="db-grid">
       <div class="sc click" id="cardOt" onclick="statFilter('ot')">
         <div class="sc-ico">🕐</div>
@@ -397,14 +412,14 @@ tr.rm:hover td{background:#fff3ec}
   <!-- TABS -->
   <div id="tabsSection" style="display:none">
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('audit',this)">🔍 未打卡稽核 <span class="tb" id="tbA">-</span></button>
-      <button class="tab" onclick="switchTab('ot',this)">⏱ 超時出勤稽核 <span class="tb" id="tbOT">-</span></button>
+      <button class="tab active" onclick="switchTab('audit',this)">🔍 未打卡比對 <span class="tb" id="tbA">-</span></button>
+      <button class="tab" onclick="switchTab('ot',this)">⏱ 超時出勤比對 <span class="tb" id="tbOT">-</span></button>
       <button class="tab" onclick="switchTab('att',this)">🕐 打卡資料</button>
-      <button class="tab" onclick="switchTab('lv',this)">📅 請假明細</button>
+      <button class="tab" onclick="switchTab('lv',this)">📅 請假申請明細</button>
       <button class="tab" onclick="switchTab('ov',this)">🗂 加班申請明細</button>
     </div>
 
-    <!-- Tab: 未打卡稽核 -->
+    <!-- Tab: 未打卡比對 -->
     <div id="tab-audit">
       <div class="tw">
         <div class="tbar">
@@ -413,7 +428,7 @@ tr.rm:hover td{background:#fff3ec}
           <select class="fi" id="absSel" onchange="applyAbs()" style="min-width:140px">
             <option value="">全部狀態</option>
             <option value="已申請">已申請</option>
-            <option value="未申請請假單">未申請請假單</option>
+            <option value="未申請假單">未申請假單</option>
           </select>
           <span class="fic" id="absCnt"></span>
           <div style="flex:1"></div>
@@ -434,7 +449,7 @@ tr.rm:hover td{background:#fff3ec}
       </div>
     </div>
 
-    <!-- Tab: 超時出勤稽核 -->
+    <!-- Tab: 超時出勤比對 -->
     <div id="tab-ot" style="display:none">
       <div class="tw">
         <div class="tbar">
@@ -461,7 +476,7 @@ tr.rm:hover td{background:#fff3ec}
             <th onclick="srt('tblOt',5)">應刷卡時間</th>
             <th onclick="srt('tblOt',6)">實際打卡時間</th>
             <th onclick="srt('tblOt',7)">卡別</th>
-            <th>超時出勤</th><th>超時出勤原因</th><th>稽核狀態</th><th>加班申請日期</th>
+            <th>超時出勤</th><th>超時出勤原因</th><th>比對狀態</th><th>加班申請日期</th>
           </tr></thead><tbody id="bOt"></tbody></table>
         </div>
       </div>
@@ -485,7 +500,7 @@ tr.rm:hover td{background:#fff3ec}
       </div>
     </div>
 
-    <!-- Tab: 請假明細 -->
+    <!-- Tab: 請假申請明細 -->
     <div id="tab-lv" style="display:none">
       <div class="tw">
         <div class="tbar">
@@ -526,7 +541,7 @@ tr.rm:hover td{background:#fff3ec}
   <div id="emptyState">
     <div class="empty">
       <div class="ico">📊</div>
-      <p>請上傳打卡資料及請假申請明細（加班申請明細選填），然後點擊「執行稽核」</p>
+      <p>請上傳打卡資料及請假申請明細（加班申請明細選填），然後點擊「執行比對」</p>
     </div>
   </div>
 
@@ -593,7 +608,7 @@ tr.rm:hover td{background:#fff3ec}
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
           <button class="btn btn-p" id="empAddBtn" onclick="addEmp()" disabled style="font-size:12px;padding:7px 16px">＋ 新增</button>
-          <button class="btn btn-g" onclick="importEmpFromAudit()" style="font-size:12px;padding:7px 16px">📋 從稽核資料匯入員工</button>
+          <button class="btn btn-g" onclick="importEmpFromAudit()" style="font-size:12px;padding:7px 16px">📋 從比對資料匯入員工</button>
           <span id="empImportHint" style="font-size:11px;color:var(--muted)"></span>
         </div>
       </div>
@@ -713,7 +728,7 @@ function buildResponse(data) {
       <!-- TEMPLATE TABS -->
       <div style="padding:20px 24px">
         <div class="tpl-tabs">
-          <button class="tpl-tab active" id="tplTab1" onclick="switchTplTab('leave',this)">📅 未申請請假單通知</button>
+          <button class="tpl-tab active" id="tplTab1" onclick="switchTplTab('leave',this)">📅 未申請假單通知</button>
           <button class="tpl-tab" id="tplTab2" onclick="switchTplTab('ot',this)">⏱ 未申請加班單通知</button>
         </div>
 
@@ -855,7 +870,7 @@ function setupCard(n,name,cnt){
 }
 function checkReady(){
   G('runBtn').disabled=!(attData&&leaveData);
-  if(attData&&leaveData)toast('資料就緒，可執行稽核','success');
+  if(attData&&leaveData)toast('資料就緒，可執行比對','success');
 }
 
 // ─── PARSE ───
@@ -931,7 +946,7 @@ function runAudit(){
   absRows=attData.filter(r=>String(r['比對結果']||'').trim()==='未打卡').map(r=>{
     const id=String(r['員工編號']||'').trim(),d=nd(r['工作日期']);
     const ll=lvMap[id+'|'+d]||[];
-    return{...r,_as:ll.length?'已申請':'未申請請假單',_lt:ll.map(l=>l['假勤項目']).join(', '),_ld:ll.map(l=>nd(l['假勤開始日期'])).join(', ')};
+    return{...r,_as:ll.length?'已申請':'未申請假單',_lt:ll.map(l=>l['假勤項目']).join(', '),_ld:ll.map(l=>nd(l['假勤開始日期'])).join(', ')};
   });
 
   // 2. Overtime
@@ -950,7 +965,7 @@ function runAudit(){
 
   // Stats
   const lc=absRows.filter(r=>r._as==='已申請').length;
-  const nc=absRows.filter(r=>r._as==='未申請請假單').length;
+  const nc=absRows.filter(r=>r._as==='未申請假單').length;
   const ot=otRows.length;
   const onr=otRows.filter(r=>r._os==='未填原因').length;
   const ona=otRows.filter(r=>r._os==='實際加班-未申請').length;
@@ -965,12 +980,12 @@ function runAudit(){
   G('tabsSection').style.display='';
   G('emptyState').style.display='none';
   G('exportBtn').style.display='';
-  G('lastUpdate').textContent='稽核時間：'+new Date().toLocaleString('zh-TW');
+  G('lastUpdate').textContent='比對時間：'+new Date().toLocaleString('zh-TW');
 
   renderAbs(absRows);renderOt(otRows);renderAtt(attData);renderLv(leaveData);
   if(otData)renderOv(otData);
   S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
-  toast(`稽核完成 ✓  未打卡 ${absRows.length} 筆｜超時 ${ot} 筆（異常 ${onr+ona} 筆）`,'success');
+  toast(`比對完成 ✓  未打卡 ${absRows.length} 筆｜超時 ${ot} 筆（異常 ${onr+ona} 筆）`,'success');
 }
 
 // ─── RENDER ───
@@ -978,7 +993,7 @@ function renderAbs(rows){
   const b=G('bAbs');
   if(!rows.length){b.innerHTML='<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted2)">無未打卡記錄</td></tr>';return;}
   b.innerHTML=rows.map((r,i)=>{
-    const sb=r._as==='已申請'?`<span class="b bl">✓ 已申請</span>`:`<span class="b bo">⚠ 未申請請假單</span>`;
+    const sb=r._as==='已申請'?`<span class="b bl">✓ 已申請</span>`:`<span class="b bo">⚠ 未申請假單</span>`;
     return`<tr class="rm"><td class="mono" style="color:var(--muted2)">${i+1}</td>
     <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
     <td>${r['部門']||''}</td><td class="mono">${nd(r['工作日期'])}</td>
@@ -1056,7 +1071,7 @@ function renderOv(rows){
 const CMAP={
   miss:{id:'cardMiss',cls:'a-red',tab:'audit',sel:'absSel',val:''},
   leave:{id:'cardLeave',cls:'a-blue',tab:'audit',sel:'absSel',val:'已申請'},
-  noapp:{id:'cardNoApp',cls:'a-orange',tab:'audit',sel:'absSel',val:'未申請請假單'},
+  noapp:{id:'cardNoApp',cls:'a-orange',tab:'audit',sel:'absSel',val:'未申請假單'},
   ot:{id:'cardOt',cls:'a-yellow',tab:'ot',sel:'otSel',val:''},
   'ot-no-reason':{id:'cardOtNR',cls:'a-red',tab:'ot',sel:'otSel',val:'未填原因'},
   'ot-no-app':{id:'cardOtNA',cls:'a-orange',tab:'ot',sel:'otSel',val:'實際加班-未申請'},
@@ -1131,12 +1146,12 @@ function exportResult(){
   const wb=XLSX.utils.book_new();
   const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期']];
   absRows.forEach(r=>ah.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),r['卡別']||'',r['比對結果']||'',r._as,r._lt,r._ld]));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ah),'未打卡稽核');
-  const oh=[['員工編號','姓名','部門','工作日期','卡別','超時出勤','超時出勤原因','稽核狀態','加班申請日期']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ah),'未打卡比對');
+  const oh=[['員工編號','姓名','部門','工作日期','卡別','超時出勤','超時出勤原因','比對狀態','加班申請日期']];
   otRows.forEach(r=>oh.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),r['卡別']||'',r['超時出勤']||'',r._or,r._os,r._oad]));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(oh),'超時出勤稽核');
-  XLSX.writeFile(wb,`打卡稽核結果_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('稽核結果已匯出','success');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(oh),'超時出勤比對');
+  XLSX.writeFile(wb,`打卡比對結果_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('比對結果已匯出','success');
 }
 
 // ─── CLEAR ───
@@ -1147,6 +1162,95 @@ function clearAll(){
   G('dashSection').style.display='none';G('tabsSection').style.display='none';
   G('emptyState').style.display='';G('exportBtn').style.display='none';
   G('runBtn').disabled=true;G('lastUpdate').textContent='';
+}
+
+// ─── EDITABLE LABELS ───
+const ICON_LIST = ['📋','📊','🏢','🏬','🗂','📁','📂','📌','📎','🗓','📅','📆',
+  '⏰','⏱','🕐','⚡','✅','❌','⚠️','🔍','🔎','🔐','🔒','🔓',
+  '👥','👤','📧','✉️','📨','📤','📥','💼','🖥','💻','📱','🖨',
+  '📝','📃','📄','📑','🗒','🗃','🗄','💡','🔔','🔕','📢','📣',
+  '✔️','🚀','🎯','🏆','💎','⭐','🌟','🔥','💫','🎉','🎊','🎖',
+  '🏅','🥇','📈','📉','📊','🔢','🔣','🔤','🔡','🔠','🅰','🅱'];
+
+function editLabel(el) {
+  const cur = el.textContent.trim();
+  const inp = document.createElement('input');
+  inp.className = 'edit-inline-input';
+  inp.value = cur;
+  inp.style.width = Math.max(cur.length * 16, 120) + 'px';
+  el.textContent = '';
+  el.appendChild(inp);
+  inp.focus(); inp.select();
+  function save(){
+    const v = inp.value.trim() || cur;
+    el.textContent = v;
+    // sync title and login title if applicable
+    if(el.id==='hdrTitle'){ document.title=v; const lt=G('loginTitle'); if(lt) lt.textContent=v; }
+    if(el.id==='loginTitle'){ const ht=G('hdrTitle'); if(ht) ht.textContent=v; document.title=v; }
+  }
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e=>{if(e.key==='Enter')inp.blur(); if(e.key==='Escape'){inp.value=cur;inp.blur();}});
+}
+
+function editBtnLabel(btn) {
+  // Get text node (skip emoji prefix if any)
+  const cur = btn.textContent.trim();
+  // Split emoji from text: first char(s) might be emoji
+  const m = cur.match(/^([\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{1F300}-\u{1F9FF}⚡⬇✕📧⚠✔🔍📅🗂⏱🔐✉👥📋📊🏢⏰]+\s?)(.*)/u);
+  const prefix = m ? m[1] : '';
+  const label = m ? m[2] : cur;
+  const inp = document.createElement('input');
+  inp.className = 'edit-inline-input';
+  inp.value = label;
+  inp.style.minWidth = '80px';
+  btn.textContent = prefix;
+  btn.appendChild(inp);
+  inp.focus(); inp.select();
+  function save(){
+    const v = inp.value.trim() || label;
+    btn.textContent = prefix + v;
+  }
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e=>{if(e.key==='Enter')inp.blur(); if(e.key==='Escape'){inp.value=label;inp.blur();}});
+}
+
+function editIcon(el) {
+  const cur = el.textContent.trim();
+  // Build modal
+  const modal = document.createElement('div');
+  modal.className = 'edit-icon-modal';
+  modal.innerHTML = `
+    <div class="edit-icon-box">
+      <div class="edit-icon-title">🎨 選擇或輸入圖示</div>
+      <div class="edit-icon-custom">
+        <input class="edit-icon-inp" id="_iconInp" value="${cur}" maxlength="4" placeholder="輸入 emoji">
+        <button class="btn btn-p" style="font-size:12px;padding:7px 14px" id="_iconOk">確認</button>
+        <button class="btn btn-g" style="font-size:12px;padding:7px 14px" id="_iconCancel">取消</button>
+      </div>
+      <div class="edit-icon-grid" id="_iconGrid"></div>
+    </div>`;
+  document.body.appendChild(modal);
+  // Populate grid
+  const grid = modal.querySelector('#_iconGrid');
+  ICON_LIST.forEach(ic=>{
+    const cell=document.createElement('div');
+    cell.className='edit-icon-cell'+(ic===cur?' selected':'');
+    cell.textContent=ic;
+    cell.onclick=()=>{modal.querySelector('#_iconInp').value=ic; grid.querySelectorAll('.edit-icon-cell').forEach(c=>c.classList.remove('selected')); cell.classList.add('selected');};
+    grid.appendChild(cell);
+  });
+  function apply(){
+    const v=modal.querySelector('#_iconInp').value.trim()||cur;
+    el.textContent=v;
+    // sync header and login logo
+    if(el.id==='hdrIco'){const ll=G('loginLogo');if(ll)ll.textContent=v;}
+    if(el.id==='loginLogo'){const hi=G('hdrIco');if(hi)hi.textContent=v;}
+    document.body.removeChild(modal);
+  }
+  modal.querySelector('#_iconOk').onclick=apply;
+  modal.querySelector('#_iconCancel').onclick=()=>document.body.removeChild(modal);
+  modal.onclick=e=>{if(e.target===modal)document.body.removeChild(modal);};
+  modal.querySelector('#_iconInp').addEventListener('keydown',e=>{if(e.key==='Enter')apply();});
 }
 
 // ─── UTILS ───
@@ -1186,7 +1290,7 @@ function openEmpModal(){
   renderEmpList();
   G('empModal').style.display='flex';
   const n=Object.keys(empDB).length;
-  S('empImportHint', n ? '' : '尚無員工，可從稽核資料快速匯入');
+  S('empImportHint', n ? '' : '尚無員工，可從比對資料快速匯入');
 }
 function closeEmpModal(){ G('empModal').style.display='none'; }
 
@@ -1263,7 +1367,7 @@ function renderEmpList(){
   );
   S('empListCount', `共 ${Object.keys(empDB).length} 人`);
   if(!entries.length){
-    list.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted2);font-size:13px">${Object.keys(empDB).length?'無符合搜尋的員工':'尚無員工資料，請新增或從稽核資料匯入'}</div>`;
+    list.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted2);font-size:13px">${Object.keys(empDB).length?'無符合搜尋的員工':'尚無員工資料，請新增或從比對資料匯入'}</div>`;
     return;
   }
   list.innerHTML=entries.map(e=>{
@@ -1286,7 +1390,7 @@ function renderEmpList(){
 }
 
 function importEmpFromAudit(){
-  if(!attData){ toast('請先執行稽核','error'); return; }
+  if(!attData){ toast('請先執行比對','error'); return; }
   let added=0;
   const seen=new Set();
   attData.forEach(r=>{
@@ -1299,7 +1403,7 @@ function importEmpFromAudit(){
   saveEmpDB();
   renderEmpList();
   S('empImportHint', added ? `已匯入 ${added} 名新員工（Email 請手動填入）` : '所有員工已存在');
-  toast(`從打卡資料匯入 ${added} 名員工`,'success');
+  toast(`從比對資料匯入 ${added} 名員工`,'success');
 }
 
 function exportEmpDB(){
@@ -1319,7 +1423,7 @@ const DEFAULT_TPL = {
     subj:'【請假申請提醒】{{姓名}} 您好，請盡快補申請請假單',
     body:`{{姓名}} 您好，
 
-系統稽核發現您在以下日期有未打卡記錄，且尚未提交請假申請：
+系統比對發現您在以下日期有未打卡記錄，且尚未提交請假申請：
 
 {{異常日期清單}}
 
@@ -1335,7 +1439,7 @@ const DEFAULT_TPL = {
     subj:'【加班申請提醒】{{姓名}} 您好，請盡快補申請加班單',
     body:`{{姓名}} 您好，
 
-系統稽核發現您在以下日期有實際加班記錄，但尚未提交加班申請：
+系統比對發現您在以下日期有實際加班記錄，但尚未提交加班申請：
 
 {{異常日期清單}}
 
@@ -1446,7 +1550,7 @@ function openSendModal(type){
   // Build target list: group by empId, collect anomaly dates
   const targets={};
   if(type==='leave'){
-    absRows.filter(r=>r._as==='未申請請假單').forEach(r=>{
+    absRows.filter(r=>r._as==='未申請假單').forEach(r=>{
       const id=String(r['員工編號']||'').trim();
       if(!targets[id]) targets[id]={id,name:r['姓名']||'',dept:r['部門']||'',dates:[]};
       targets[id].dates.push(`${nd(r['工作日期'])} (${r['卡別']||''})`);
