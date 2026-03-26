@@ -71,7 +71,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text
 .main{padding:24px 32px}
 
 /* UPLOAD */
-.ups{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.ups{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px}
 .upc{background:var(--bg2);border:1.5px dashed var(--border2);border-radius:10px;padding:16px 20px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
 .upc:hover,.upc.dragover{border-color:var(--accent);background:var(--al)}
 .upc.loaded{border-style:solid;border-color:var(--accent);background:var(--al)}
@@ -342,6 +342,12 @@ tr.rm:hover td{background:#fff3ec}
       <div class="upn">📂 <span id="name3">點擊或拖曳上傳 .xlsx</span></div>
       <div class="ups-t" id="status3">尚未載入</div>
     </div>
+    <div class="upc" id="card4" ondragover="onDrag(event,'card4')" ondragleave="offDrag(event,'card4')" ondrop="onDrop(event,'card4','forgot')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'forgot')">
+      <div class="upl">🔄 忘刷卡申請明細 <span style="color:var(--muted2)">(選填)</span></div>
+      <div class="upn">📂 <span id="name4">點擊或拖曳上傳 .xlsx</span></div>
+      <div class="ups-t" id="status4">尚未載入</div>
+    </div>
   </div>
 
   <!-- ACTIONS -->
@@ -354,7 +360,7 @@ tr.rm:hover td{background:#fff3ec}
   <!-- DASHBOARD -->
   <div id="dashSection" style="display:none">
     <div class="db-head">📊 打卡異常比對</div>
-    <div class="db-grid">
+    <div class="db-grid" style="grid-template-columns:repeat(5,1fr)">
       <div class="sc" id="cardTotal">
         <div class="sc-ico">📋</div>
         <div class="sc-lbl">打卡資料總筆數</div>
@@ -370,6 +376,12 @@ tr.rm:hover td{background:#fff3ec}
         <div class="sc-ico">✅</div>
         <div class="sc-lbl">已申請請假</div>
         <div class="sc-val c-b" id="statLeave">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+      <div class="sc click" id="cardForgot" onclick="statFilter('forgot')">
+        <div class="sc-ico">🔄</div>
+        <div class="sc-lbl">已申請忘刷卡</div>
+        <div class="sc-val c-g" id="statForgot">-</div>
         <div class="sc-hint">點擊篩選 ↓</div>
       </div>
       <div class="sc click" id="cardNoApp" onclick="statFilter('noapp')">
@@ -417,6 +429,7 @@ tr.rm:hover td{background:#fff3ec}
       <button class="tab" onclick="switchTab('att',this)">🕐 打卡資料</button>
       <button class="tab" onclick="switchTab('lv',this)">📅 請假申請明細</button>
       <button class="tab" onclick="switchTab('ov',this)">🗂 加班申請明細</button>
+      <button class="tab" onclick="switchTab('fg',this)">🔄 忘刷卡申請明細</button>
     </div>
 
     <!-- Tab: 未打卡比對 -->
@@ -425,9 +438,10 @@ tr.rm:hover td{background:#fff3ec}
         <div class="tbar">
           <span class="fil">篩選：</span>
           <input class="fi" id="absQ" placeholder="員工編號 / 姓名 / 部門" oninput="applyAbs()">
-          <select class="fi" id="absSel" onchange="applyAbs()" style="min-width:140px">
+          <select class="fi" id="absSel" onchange="applyAbs()" style="min-width:160px">
             <option value="">全部狀態</option>
-            <option value="已申請">已申請</option>
+            <option value="已申請請假">已申請請假</option>
+            <option value="已申請忘刷卡">已申請忘刷卡</option>
             <option value="未申請假單">未申請假單</option>
           </select>
           <span class="fic" id="absCnt"></span>
@@ -443,7 +457,7 @@ tr.rm:hover td{background:#fff3ec}
             <th onclick="srt('tblAbs',4)">工作日期</th>
             <th onclick="srt('tblAbs',5)">應刷卡時間</th>
             <th onclick="srt('tblAbs',6)">卡別</th>
-            <th>比對結果</th><th>異常狀態</th><th>請假類型</th><th>請假日期</th>
+            <th>比對結果</th><th>異常狀態</th><th>請假類型</th><th>請假日期</th><th>忘刷卡申請</th>
           </tr></thead><tbody id="bAbs"></tbody></table>
         </div>
       </div>
@@ -535,13 +549,29 @@ tr.rm:hover td{background:#fff3ec}
         </div>
       </div>
     </div>
+
+    <!-- Tab: 忘刷卡申請明細 -->
+    <div id="tab-fg" style="display:none">
+      <div class="tw">
+        <div class="tbar">
+          <span class="fil">搜尋：</span>
+          <input class="fi" placeholder="申請人 / 部門 / 狀態" oninput="fgen('tblFg',this.value)">
+        </div>
+        <div class="ts">
+          <table id="tblFg"><thead><tr>
+            <th>#</th><th>序號</th><th>表單編號</th><th>申請人</th><th>部門</th>
+            <th>忘刷卡時間</th><th>狀態</th><th>申請日期</th>
+          </tr></thead><tbody id="bFg"></tbody></table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- EMPTY -->
   <div id="emptyState">
     <div class="empty">
       <div class="ico">📊</div>
-      <p>請上傳打卡資料及請假申請明細（加班申請明細選填），然後點擊「執行比對」</p>
+      <p>請上傳打卡資料及請假申請明細（加班申請明細、忘刷卡申請明細選填），然後點擊「執行比對」</p>
     </div>
   </div>
 
@@ -840,7 +870,7 @@ function buildResponse(data) {
 </div>
 
 <script>
-let attData=null,leaveData=null,otData=null,absRows=[],otRows=[];
+let attData=null,leaveData=null,otData=null,forgotData=null,absRows=[],otRows=[];
 let aAbsF='',aOtF='';
 
 // ─── DRAG DROP ───
@@ -858,7 +888,8 @@ function processFile(file,type){
     const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
     if(type==='attendance'){attData=parseAtt(raw);setupCard(1,file.name,attData.length)}
     else if(type==='leave'){leaveData=parseLeave(raw);setupCard(2,file.name,leaveData.length)}
-    else{otData=parseOT(raw);setupCard(3,file.name,otData.length)}
+    else if(type==='overtime'){otData=parseOT(raw);setupCard(3,file.name,otData.length)}
+    else if(type==='forgot'){forgotData=parseForgot(raw);setupCard(4,file.name,forgotData.length)}
     checkReady();
   };
   r.readAsArrayBuffer(file);
@@ -890,6 +921,18 @@ function parseOT(raw){
   let hi=raw.findIndex(r=>String(r[0]).trim()==='員工編號');if(hi<0)hi=6;
   const h=raw[hi],res=[];
   for(let i=hi+1;i<raw.length;i++){const r=raw[i];if(r.every(c=>c===''))continue;const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);res.push(o);}
+  return res;
+}
+function parseForgot(raw){
+  // Find header row: look for 申請人 or 忘刷卡時間 or 序號
+  let hi=raw.findIndex(r=>r.some(c=>String(c).trim()==='申請人'||String(c).trim()==='忘刷卡時間'));
+  if(hi<0)hi=0;
+  const h=raw[hi],res=[];
+  for(let i=hi+1;i<raw.length;i++){
+    const r=raw[i];if(r.every(c=>c===''))continue;
+    const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);
+    res.push(o);
+  }
   return res;
 }
 
@@ -942,11 +985,62 @@ function runAudit(){
     });
   }
 
-  // 1. Absence
+  // Build forgotMap: key = 姓名|日期，only 簽核完成 records
+  const forgotMap={};
+  if(forgotData){
+    forgotData.forEach(f=>{
+      const status=String(f['狀態']||'').trim();
+      if(status!=='簽核完成')return;
+      const name=String(f['申請人']||'').trim();
+      // 忘刷卡時間 could be a date string like "03/24/2026 17:00:00" or Excel serial
+      const rawTime=f['忘刷卡時間'];
+      let d='';
+      if(rawTime||rawTime===0){
+        const s=String(rawTime).trim();
+        // Excel serial number
+        if(/^\d+(\.\d+)?$/.test(s)&&parseFloat(s)>40000){
+          const parsed=XLSX.SSF.parse_date_code(parseFloat(s));
+          if(parsed)d=`${parsed.y}/${p2(parsed.m)}/${p2(parsed.d)}`;
+        }
+        // MM/DD/YYYY HH:MM:SS
+        else if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)){
+          const parts=s.split(' ')[0].split('/');
+          if(parts.length===3)d=`${parts[2]}/${p2(parseInt(parts[0]))}/${p2(parseInt(parts[1]))}`;
+        }
+        // YYYY/MM/DD
+        else if(/^\d{4}\/\d{2}\/\d{2}/.test(s)){d=s.slice(0,10);}
+        // YYYY-MM-DD
+        else if(/^\d{4}-\d{2}-\d{2}/.test(s)){d=s.slice(0,10).replace(/-/g,'/');}
+      }
+      if(!name||!d)return;
+      const k=name+'|'+d;
+      if(!forgotMap[k])forgotMap[k]=[];
+      forgotMap[k].push(f);
+    });
+  }
+
+  // 1. Absence — check leave map first, then forgot map
   absRows=attData.filter(r=>String(r['比對結果']||'').trim()==='未打卡').map(r=>{
-    const id=String(r['員工編號']||'').trim(),d=nd(r['工作日期']);
+    const id=String(r['員工編號']||'').trim();
+    const name=String(r['姓名']||'').trim();
+    const d=nd(r['工作日期']);
     const ll=lvMap[id+'|'+d]||[];
-    return{...r,_as:ll.length?'已申請':'未申請假單',_lt:ll.map(l=>l['假勤項目']).join(', '),_ld:ll.map(l=>nd(l['假勤開始日期'])).join(', ')};
+    // Check forgot map by name + date
+    const fl=forgotMap[name+'|'+d]||[];
+    let as,lt,ld,ft='',fd='';
+    if(ll.length){
+      as='已申請請假';
+      lt=ll.map(l=>l['假勤項目']).join(', ');
+      ld=ll.map(l=>nd(l['假勤開始日期'])).join(', ');
+    } else if(fl.length){
+      as='已申請忘刷卡';
+      lt='';ld='';
+      ft=fl.map(f=>String(f['狀態']||'')).join(', ');
+      fd=fl.map(f=>{const s=String(f['忘刷卡時間']||'');return s.split(' ')[0];}).join(', ');
+    } else {
+      as='未申請假單';lt='';ld='';
+    }
+    return{...r,_as:as,_lt:lt,_ld:ld,_ft:ft,_fd:fd};
   });
 
   // 2. Overtime
@@ -964,16 +1058,20 @@ function runAudit(){
   });
 
   // Stats
-  const lc=absRows.filter(r=>r._as==='已申請').length;
+  const lc=absRows.filter(r=>r._as==='已申請請假').length;
+  const fc=absRows.filter(r=>r._as==='已申請忘刷卡').length;
   const nc=absRows.filter(r=>r._as==='未申請假單').length;
   const ot=otRows.length;
   const onr=otRows.filter(r=>r._os==='未填原因').length;
   const ona=otRows.filter(r=>r._os==='實際加班-未申請').length;
   const ook=otRows.filter(r=>r._os==='實際加班-已申請').length;
 
-  ['statTotal','statMiss','statLeave','statNoApp','statOt','statOtNR','statOtNA','statOtOk'].forEach((id,i)=>{
-    S(id,[attData.length,absRows.length,lc,nc,ot,onr,ona,ook][i]);
-  });
+  S('statTotal',attData.length);
+  S('statMiss',absRows.length);
+  S('statLeave',lc);
+  S('statForgot',fc);
+  S('statNoApp',nc);
+  S('statOt',ot);S('statOtNR',onr);S('statOtNA',ona);S('statOtOk',ook);
   S('tbA',absRows.length);S('tbOT',otRows.length);
 
   G('dashSection').style.display='';
@@ -984,22 +1082,34 @@ function runAudit(){
 
   renderAbs(absRows);renderOt(otRows);renderAtt(attData);renderLv(leaveData);
   if(otData)renderOv(otData);
+  if(forgotData)renderFg(forgotData);
   S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
-  toast(`比對完成 ✓  未打卡 ${absRows.length} 筆｜超時 ${ot} 筆（異常 ${onr+ona} 筆）`,'success');
+  toast(`比對完成 ✓  未打卡 ${absRows.length} 筆（忘刷卡已申請 ${fc} 筆｜異常 ${nc} 筆）｜超時 ${ot} 筆`,'success');
 }
 
 // ─── RENDER ───
 function renderAbs(rows){
   const b=G('bAbs');
-  if(!rows.length){b.innerHTML='<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted2)">無未打卡記錄</td></tr>';return;}
+  if(!rows.length){b.innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--muted2)">無未打卡記錄</td></tr>';return;}
   b.innerHTML=rows.map((r,i)=>{
-    const sb=r._as==='已申請'?`<span class="b bl">✓ 已申請</span>`:`<span class="b bo">⚠ 未申請假單</span>`;
-    return`<tr class="rm"><td class="mono" style="color:var(--muted2)">${i+1}</td>
+    let sb,rowClass='rm';
+    if(r._as==='已申請請假'){
+      sb=`<span class="b bl">✓ 已申請請假</span>`;rowClass='';
+    } else if(r._as==='已申請忘刷卡'){
+      sb=`<span class="b bn">🔄 已申請忘刷卡</span>`;rowClass='';
+    } else {
+      sb=`<span class="b bo">⚠ 未申請假單</span>`;
+    }
+    const forgotCell=r._as==='已申請忘刷卡'
+      ?`<span class="b bn" style="font-size:11px">✓ 簽核完成</span>`
+      :`<span style="color:var(--muted2);font-size:11px">—</span>`;
+    return`<tr class="${rowClass}"><td class="mono" style="color:var(--muted2)">${i+1}</td>
     <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
     <td>${r['部門']||''}</td><td class="mono">${nd(r['工作日期'])}</td>
     <td class="mono">${fdt(r['應刷卡時間'])}</td><td>${r['卡別']||''}</td>
     <td><span class="b bm">未打卡</span></td><td>${sb}</td>
-    <td style="color:var(--accent)">${r._lt}</td><td class="mono">${r._ld}</td></tr>`;
+    <td style="color:var(--accent)">${r._lt}</td><td class="mono">${r._ld}</td>
+    <td>${forgotCell}</td></tr>`;
   }).join('');
 }
 
@@ -1067,23 +1177,44 @@ function renderOv(rows){
     <td style="color:var(--muted)">${r['來源']||''}</td></tr>`).join('');
 }
 
+function renderFg(rows){
+  const b=G('bFg');
+  if(!rows||!rows.length){b.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted2)">無忘刷卡申請記錄</td></tr>';return;}
+  b.innerHTML=rows.map((r,i)=>{
+    const status=String(r['狀態']||'').trim();
+    const sb=status==='簽核完成'?`<span class="b bn">✓ 簽核完成</span>`:
+             status==='已終止'?`<span class="b bd">✕ 已終止</span>`:
+             `<span class="b by">${status}</span>`;
+    return`<tr>
+    <td class="mono" style="color:var(--muted2)">${i+1}</td>
+    <td class="mono">${r['序號']||''}</td>
+    <td class="mono" style="font-size:11px;color:var(--muted)">${r['表單編號']||''}</td>
+    <td style="font-weight:600">${r['申請人']||''}</td>
+    <td>${r['部門']||''}</td>
+    <td class="mono">${String(r['忘刷卡時間']||'').split('.')[0]}</td>
+    <td>${sb}</td>
+    <td class="mono">${r['申請日期']||''}</td></tr>`;
+  }).join('');
+}
+
 // ─── STAT FILTER ───
 const CMAP={
   miss:{id:'cardMiss',cls:'a-red',tab:'audit',sel:'absSel',val:''},
-  leave:{id:'cardLeave',cls:'a-blue',tab:'audit',sel:'absSel',val:'已申請'},
+  leave:{id:'cardLeave',cls:'a-blue',tab:'audit',sel:'absSel',val:'已申請請假'},
+  forgot:{id:'cardForgot',cls:'a-green',tab:'audit',sel:'absSel',val:'已申請忘刷卡'},
   noapp:{id:'cardNoApp',cls:'a-orange',tab:'audit',sel:'absSel',val:'未申請假單'},
   ot:{id:'cardOt',cls:'a-yellow',tab:'ot',sel:'otSel',val:''},
   'ot-no-reason':{id:'cardOtNR',cls:'a-red',tab:'ot',sel:'otSel',val:'未填原因'},
   'ot-no-app':{id:'cardOtNA',cls:'a-orange',tab:'ot',sel:'otSel',val:'實際加班-未申請'},
   'ot-ok':{id:'cardOtOk',cls:'a-green',tab:'ot',sel:'otSel',val:'實際加班-已申請'}
 };
-const ABS_CARDS=['cardMiss','cardLeave','cardNoApp'];
+const ABS_CARDS=['cardMiss','cardLeave','cardForgot','cardNoApp'];
 const OT_CARDS=['cardOt','cardOtNR','cardOtNA','cardOtOk'];
 const ALL_CLS=['a-red','a-blue','a-orange','a-green','a-yellow'];
 
 function statFilter(type){
   const cfg=CMAP[type];
-  const isAbs=['miss','leave','noapp'].includes(type);
+  const isAbs=['miss','leave','forgot','noapp'].includes(type);
   const curF=isAbs?aAbsF:aOtF;
 
   // Toggle off
@@ -1125,7 +1256,7 @@ function fgen(tid,q){
 
 // ─── TAB ───
 function switchTab(name,el){
-  ['audit','ot','att','lv','ov'].forEach(t=>G('tab-'+t).style.display='none');
+  ['audit','ot','att','lv','ov','fg'].forEach(t=>G('tab-'+t).style.display='none');
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   G('tab-'+name).style.display='';
   el.classList.add('active');
@@ -1144,21 +1275,30 @@ function srt(tid,col){
 // ─── EXPORT ───
 function exportResult(){
   const wb=XLSX.utils.book_new();
-  const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期']];
-  absRows.forEach(r=>ah.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),r['卡別']||'',r['比對結果']||'',r._as,r._lt,r._ld]));
+  const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期','忘刷卡申請']];
+  absRows.forEach(r=>ah.push([
+    r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),
+    r['卡別']||'',r['比對結果']||'',r._as,r._lt,r._ld,
+    r._as==='已申請忘刷卡'?'簽核完成':''
+  ]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ah),'未打卡比對');
   const oh=[['員工編號','姓名','部門','工作日期','卡別','超時出勤','超時出勤原因','比對狀態','加班申請日期']];
   otRows.forEach(r=>oh.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),r['卡別']||'',r['超時出勤']||'',r._or,r._os,r._oad]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(oh),'超時出勤比對');
+  if(forgotData&&forgotData.length){
+    const fh=[['序號','表單編號','申請人','部門','忘刷卡時間','狀態','申請日期']];
+    forgotData.forEach(r=>fh.push([r['序號']||'',r['表單編號']||'',r['申請人']||'',r['部門']||'',r['忘刷卡時間']||'',r['狀態']||'',r['申請日期']||'']));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fh),'忘刷卡申請明細');
+  }
   XLSX.writeFile(wb,`打卡比對結果_${new Date().toISOString().slice(0,10)}.xlsx`);
   toast('比對結果已匯出','success');
 }
 
 // ─── CLEAR ───
 function clearAll(){
-  attData=leaveData=otData=null;absRows=otRows=[];aAbsF=aOtF='';
+  attData=leaveData=otData=forgotData=null;absRows=otRows=[];aAbsF=aOtF='';
   clearCards([...ABS_CARDS,...OT_CARDS]);
-  [1,2,3].forEach(n=>{G('name'+n).textContent='點擊或拖曳上傳 .xlsx';const s=G('status'+n);s.textContent='尚未載入';s.className='ups-t';G('card'+n).classList.remove('loaded');});
+  [1,2,3,4].forEach(n=>{G('name'+n).textContent='點擊或拖曳上傳 .xlsx';const s=G('status'+n);s.textContent='尚未載入';s.className='ups-t';G('card'+n).classList.remove('loaded');});
   G('dashSection').style.display='none';G('tabsSection').style.display='none';
   G('emptyState').style.display='';G('exportBtn').style.display='none';
   G('runBtn').disabled=true;G('lastUpdate').textContent='';
