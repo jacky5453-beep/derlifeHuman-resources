@@ -393,7 +393,7 @@ tr.rm:hover td{background:#fff3ec}
       </div>
       <div class="sc click" id="cardNoApp" onclick="statFilter('noapp')">
         <div class="sc-ico">⚠️</div>
-        <div class="sc-lbl">未申請假單</div>
+        <div class="sc-lbl">未申請忘刷卡</div>
         <div class="sc-val c-o" id="statNoApp">-</div>
         <div class="sc-hint">點擊篩選 ↓</div>
       </div>
@@ -449,11 +449,11 @@ tr.rm:hover td{background:#fff3ec}
             <option value="">全部狀態</option>
             <option value="已申請請假">已申請請假</option>
             <option value="已申請忘刷卡">已申請忘刷卡</option>
-            <option value="未申請假單">未申請假單</option>
+            <option value="未申請忘刷卡">未申請忘刷卡</option>
           </select>
           <span class="fic" id="absCnt"></span>
           <div style="flex:1"></div>
-          <button class="btn btn-p" style="font-size:12px;padding:6px 14px" onclick="openSendModal('leave')">📧 寄發未申請請假通知</button>
+          <button class="btn btn-p" style="font-size:12px;padding:6px 14px" onclick="openSendModal('forgot')">📧 寄發未申請忘刷卡通知</button>
         </div>
         <div class="ts">
           <table id="tblAbs"><thead><tr>
@@ -464,7 +464,7 @@ tr.rm:hover td{background:#fff3ec}
             <th onclick="srt('tblAbs',4)">工作日期</th>
             <th onclick="srt('tblAbs',5)">應刷卡時間</th>
             <th onclick="srt('tblAbs',6)">卡別</th>
-            <th>比對結果</th><th>異常狀態</th><th>請假類型</th><th>請假日期</th><th>忘刷卡申請</th>
+            <th>比對結果</th><th>異常狀態</th><th>請假類型</th><th>請假日期</th><th>未申請忘刷卡</th>
           </tr></thead><tbody id="bAbs"></tbody></table>
         </div>
       </div>
@@ -765,7 +765,8 @@ function buildResponse(data) {
       <!-- TEMPLATE TABS -->
       <div style="padding:20px 24px">
         <div class="tpl-tabs">
-          <button class="tpl-tab active" id="tplTab1" onclick="switchTplTab('leave',this)">📅 未申請假單通知</button>
+          <button class="tpl-tab active" id="tplTab1" onclick="switchTplTab('leave',this)">📅 未申請請假通知</button>
+          <button class="tpl-tab" id="tplTab3" onclick="switchTplTab('forgot',this)">🔄 未申請忘刷卡通知</button>
           <button class="tpl-tab" id="tplTab2" onclick="switchTplTab('ot',this)">⏱ 未申請加班單通知</button>
         </div>
 
@@ -796,6 +797,36 @@ function buildResponse(data) {
           <div style="background:var(--bg3);border-radius:8px;padding:14px;border:1px solid var(--border);margin-top:4px">
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">👁 預覽</div>
             <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-wrap;max-height:140px;overflow-y:auto" id="tplLeavePreview"></div>
+          </div>
+        </div>
+
+        <!-- Forgot template -->
+        <div id="tplForgot" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="tpl-field">
+              <div class="tpl-label">寄件人名稱</div>
+              <input class="tpl-input" id="tplForgotSender" placeholder="如：人資部門" value="人資部門">
+            </div>
+            <div class="tpl-field">
+              <div class="tpl-label">郵件主旨</div>
+              <input class="tpl-input" id="tplForgotSubj" oninput="updateTplPreview('forgot')">
+            </div>
+          </div>
+          <div class="tpl-field">
+            <div class="tpl-label">郵件內容</div>
+            <textarea class="tpl-textarea" id="tplForgotBody" rows="7" oninput="updateTplPreview('forgot')"></textarea>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--muted)">插入變數：</span>
+              <span class="tpl-var" onclick="insertVar('tplForgotBody','{{姓名}}')">{{姓名}}</span>
+              <span class="tpl-var" onclick="insertVar('tplForgotBody','{{員工編號}}')">{{員工編號}}</span>
+              <span class="tpl-var" onclick="insertVar('tplForgotBody','{{部門}}')">{{部門}}</span>
+              <span class="tpl-var" onclick="insertVar('tplForgotBody','{{異常日期清單}}')">{{異常日期清單}}</span>
+              <span class="tpl-var" onclick="insertVar('tplForgotBody','{{今日日期}}')">{{今日日期}}</span>
+            </div>
+          </div>
+          <div style="background:var(--bg3);border-radius:8px;padding:14px;border:1px solid var(--border);margin-top:4px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">👁 預覽</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-wrap;max-height:140px;overflow-y:auto" id="tplForgotPreview"></div>
           </div>
         </div>
 
@@ -1071,7 +1102,7 @@ function runAudit(){
       ft=fl.map(f=>String(f['狀態']||'')).join(', ');
       fd=fl.map(f=>{const s=String(f['忘刷卡時間']||'');return s.split(' ')[0];}).join(', ');
     } else {
-      as='未申請假單';lt='';ld='';
+      as='未申請忘刷卡';lt='';ld='';
     }
     return{...r,_as:as,_lt:lt,_ld:ld,_ft:ft,_fd:fd};
   });
@@ -1093,7 +1124,7 @@ function runAudit(){
   // Stats
   const lc=absRows.filter(r=>r._as==='已申請請假').length;
   const fc=absRows.filter(r=>r._as==='已申請忘刷卡').length;
-  const nc=absRows.filter(r=>r._as==='未申請假單').length;
+  const nc=absRows.filter(r=>r._as==='未申請忘刷卡').length;
   const ot=otRows.length;
   const onr=otRows.filter(r=>r._os==='未填原因').length;
   const ona=otRows.filter(r=>r._os==='實際加班-未申請').length;
@@ -1131,7 +1162,7 @@ function renderAbs(rows){
     } else if(r._as==='已申請忘刷卡'){
       sb=`<span class="b bn">🔄 已申請忘刷卡</span>`;rowClass='';
     } else {
-      sb=`<span class="b bo">⚠ 未申請假單</span>`;
+      sb=`<span class="b bo">⚠ 未申請忘刷卡</span>`;
     }
     const forgotCell=r._as==='已申請忘刷卡'
       ?`<span class="b bn" style="font-size:11px">✓ 簽核完成</span>`
@@ -1237,7 +1268,7 @@ const CMAP={
   miss:{id:'cardMiss',cls:'a-red',tab:'audit',sel:'absSel',val:''},
   leave:{id:'cardLeave',cls:'a-blue',tab:'audit',sel:'absSel',val:'已申請請假'},
   forgot:{id:'cardForgot',cls:'a-green',tab:'audit',sel:'absSel',val:'已申請忘刷卡'},
-  noapp:{id:'cardNoApp',cls:'a-orange',tab:'audit',sel:'absSel',val:'未申請假單'},
+  noapp:{id:'cardNoApp',cls:'a-orange',tab:'audit',sel:'absSel',val:'未申請忘刷卡'},
   ot:{id:'cardOt',cls:'a-yellow',tab:'ot',sel:'otSel',val:''},
   'ot-no-reason':{id:'cardOtNR',cls:'a-red',tab:'ot',sel:'otSel',val:'未填原因'},
   'ot-no-app':{id:'cardOtNA',cls:'a-orange',tab:'ot',sel:'otSel',val:'實際加班-未申請'},
@@ -1310,7 +1341,7 @@ function srt(tid,col){
 // ─── EXPORT ───
 function exportResult(){
   const wb=XLSX.utils.book_new();
-  const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期','忘刷卡申請']];
+  const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期','未申請忘刷卡']];
   absRows.forEach(r=>ah.push([
     r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),
     r['卡別']||'',r['比對結果']||'',r._as,r._lt,r._ld,
@@ -1609,6 +1640,22 @@ const DEFAULT_TPL = {
 此為系統自動發送通知
 {{今日日期}}`
   },
+  forgot:{
+    sender:'人資部門',
+    subj:'【忘刷卡申請提醒】{{姓名}} 您好，請盡快補填忘刷卡申請單',
+    body:`{{姓名}} 您好，
+
+系統比對發現您在以下日期有未打卡記錄，尚未提交請假申請或忘刷卡申請：
+
+{{異常日期清單}}
+
+請您於收到本通知後 24 小時內，至系統補填忘刷卡申請單（或請假申請單），以利出勤記錄正確。
+
+如有任何疑問，請洽人資部門。
+
+此為系統自動發送通知
+{{今日日期}}`
+  },
   ot:{
     sender:'人資部門',
     subj:'【加班申請提醒】{{姓名}} 您好，請盡快補申請加班單',
@@ -1627,20 +1674,27 @@ const DEFAULT_TPL = {
   }
 };
 
-let emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
+let emailTpls = { leave:{...DEFAULT_TPL.leave}, forgot:{...DEFAULT_TPL.forgot}, ot:{...DEFAULT_TPL.ot} };
 
 async function loadTpls(){
   try{
     const r = await window.storage.get('emailTpls');
-    if(r) emailTpls = JSON.parse(r.value);
-    else emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
-  }catch(e){ emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} }; }
+    if(r){
+      emailTpls = JSON.parse(r.value);
+      // ensure forgot template exists for older saved data
+      if(!emailTpls.forgot) emailTpls.forgot={...DEFAULT_TPL.forgot};
+    }
+    else emailTpls = { leave:{...DEFAULT_TPL.leave}, forgot:{...DEFAULT_TPL.forgot}, ot:{...DEFAULT_TPL.ot} };
+  }catch(e){ emailTpls = { leave:{...DEFAULT_TPL.leave}, forgot:{...DEFAULT_TPL.forgot}, ot:{...DEFAULT_TPL.ot} }; }
 }
 
 async function saveTpl(){
   emailTpls.leave.sender=G('tplLeaveSender').value;
   emailTpls.leave.subj=G('tplLeaveSubj').value;
   emailTpls.leave.body=G('tplLeaveBody').value;
+  emailTpls.forgot.sender=G('tplForgotSender').value;
+  emailTpls.forgot.subj=G('tplForgotSubj').value;
+  emailTpls.forgot.body=G('tplForgotBody').value;
   emailTpls.ot.sender=G('tplOtSender').value;
   emailTpls.ot.subj=G('tplOtSubj').value;
   emailTpls.ot.body=G('tplOtBody').value;
@@ -1652,7 +1706,7 @@ async function saveTpl(){
 
 function resetTpl(){
   if(!confirm('確定要重設為預設模板？'))return;
-  emailTpls={ leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
+  emailTpls={ leave:{...DEFAULT_TPL.leave}, forgot:{...DEFAULT_TPL.forgot}, ot:{...DEFAULT_TPL.ot} };
   fillTplEditor();
   toast('已重設為預設模板');
 }
@@ -1669,28 +1723,34 @@ function fillTplEditor(){
   G('tplLeaveSender').value=emailTpls.leave.sender||'';
   G('tplLeaveSubj').value=emailTpls.leave.subj||'';
   G('tplLeaveBody').value=emailTpls.leave.body||'';
+  G('tplForgotSender').value=(emailTpls.forgot||DEFAULT_TPL.forgot).sender||'';
+  G('tplForgotSubj').value=(emailTpls.forgot||DEFAULT_TPL.forgot).subj||'';
+  G('tplForgotBody').value=(emailTpls.forgot||DEFAULT_TPL.forgot).body||'';
   G('tplOtSender').value=emailTpls.ot.sender||'';
   G('tplOtSubj').value=emailTpls.ot.subj||'';
   G('tplOtBody').value=emailTpls.ot.body||'';
   updateTplPreview('leave');
-  ['tplLeaveBody','tplLeaveSubj','tplOtBody','tplOtSubj'].forEach(id=>{
-    G(id).oninput=()=>updateTplPreview(id.includes('Leave')?'leave':'ot');
+  ['tplLeaveBody','tplLeaveSubj','tplForgotBody','tplForgotSubj','tplOtBody','tplOtSubj'].forEach(id=>{
+    G(id).oninput=()=>updateTplPreview(id.includes('Leave')?'leave':id.includes('Forgot')?'forgot':'ot');
   });
 }
 
 function updateTplPreview(type){
-  const subj=G(`tpl${type==='leave'?'Leave':'Ot'}Subj`).value;
-  const body=G(`tpl${type==='leave'?'Leave':'Ot'}Body`).value;
-  const sample=renderTpl(type==='leave'?emailTpls.leave.subj:subj,
-                          type==='leave'?emailTpls.leave.body:body,
-                          {姓名:'王小明',員工編號:'DLS0001',部門:'行銷部',異常日期清單:'• 2026/03/01 (上班)\n• 2026/03/03 (下班)'});
-  G(`tpl${type==='leave'?'Leave':'Ot'}Preview`).textContent=`主旨：${G(`tpl${type==='leave'?'Leave':'Ot'}Subj`).value}\n\n${G(`tpl${type==='leave'?'Leave':'Ot'}Body`).value}`.replace('{{姓名}}','王小明').replace('{{員工編號}}','DLS0001').replace('{{部門}}','行銷部').replace('{{異常日期清單}}','• 2026/03/01 (上班)\n• 2026/03/03 (下班)').replace('{{今日日期}}',new Date().toLocaleDateString('zh-TW'));
+  const key=type==='leave'?'Leave':type==='forgot'?'Forgot':'Ot';
+  const subj=G(`tpl${key}Subj`).value;
+  const body=G(`tpl${key}Body`).value;
+  G(`tpl${key}Preview`).textContent=`主旨：${subj}\n\n${body}`
+    .replace('{{姓名}}','王小明').replace('{{員工編號}}','DLS0001')
+    .replace('{{部門}}','行銷部')
+    .replace('{{異常日期清單}}','• 2026/03/01 (上班)\n• 2026/03/03 (下班)')
+    .replace('{{今日日期}}',new Date().toLocaleDateString('zh-TW'));
 }
 
 function switchTplTab(type, el){
   document.querySelectorAll('.tpl-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   G('tplLeave').style.display=type==='leave'?'':'none';
+  G('tplForgot').style.display=type==='forgot'?'':'none';
   G('tplOt').style.display=type==='ot'?'':'none';
 }
 
@@ -1700,7 +1760,8 @@ function insertVar(textareaId, variable){
   ta.value=ta.value.slice(0,s)+variable+ta.value.slice(e);
   ta.selectionStart=ta.selectionEnd=s+variable.length;
   ta.focus();
-  updateTplPreview(textareaId.includes('Leave')?'leave':'ot');
+  const type=textareaId.includes('Leave')?'leave':textareaId.includes('Forgot')?'forgot':'ot';
+  updateTplPreview(type);
 }
 
 function renderTpl(subj, body, vars){
@@ -1725,7 +1786,13 @@ function openSendModal(type){
   // Build target list: group by empId, collect anomaly dates
   const targets={};
   if(type==='leave'){
-    absRows.filter(r=>r._as==='未申請假單').forEach(r=>{
+    absRows.filter(r=>r._as==='已申請請假').forEach(r=>{
+      const id=String(r['員工編號']||'').trim();
+      if(!targets[id]) targets[id]={id,name:r['姓名']||'',dept:r['部門']||'',dates:[]};
+      targets[id].dates.push(`${nd(r['工作日期'])} (${r['卡別']||''})`);
+    });
+  } else if(type==='forgot'){
+    absRows.filter(r=>r._as==='未申請忘刷卡').forEach(r=>{
       const id=String(r['員工編號']||'').trim();
       if(!targets[id]) targets[id]={id,name:r['姓名']||'',dept:r['部門']||'',dates:[]};
       targets[id].dates.push(`${nd(r['工作日期'])} (${r['卡別']||''})`);
@@ -1739,7 +1806,10 @@ function openSendModal(type){
   }
 
   const list=Object.values(targets);
-  G('sendModalTitle').textContent = type==='leave' ? '📧 寄發未申請請假通知' : '📧 寄發未申請加班通知';
+  G('sendModalTitle').textContent =
+    type==='leave'   ? '📧 寄發未申請請假通知' :
+    type==='forgot'  ? '📧 寄發未申請忘刷卡通知' :
+                       '📧 寄發未申請加班通知';
   S('sendModalDesc', `共 ${list.length} 名員工需要通知`);
 
   let hasNoEmail=false;
@@ -1790,7 +1860,7 @@ async function fireSendEmail(){
     closeSendModal(); openTplModal(); return;
   }
 
-  const tpl=sendType==='leave'?emailTpls.leave:emailTpls.ot;
+  const tpl=sendType==='leave'?emailTpls.leave:sendType==='forgot'?(emailTpls.forgot||DEFAULT_TPL.forgot):emailTpls.ot;
   G('sendFireBtn').disabled=true; G('sendFireBtn').textContent='發送中...';
   G('sendProgress').style.display='block';
   let ok=0,fail=0,failNames=[];
@@ -2137,8 +2207,9 @@ async function loadTpls() {
   const data = await fsGet('settings/emailTpls');
   if (data) {
     emailTpls = data;
+    if (!emailTpls.forgot) emailTpls.forgot = {...DEFAULT_TPL.forgot};
   } else {
-    emailTpls = { leave:{...DEFAULT_TPL.leave}, ot:{...DEFAULT_TPL.ot} };
+    emailTpls = { leave:{...DEFAULT_TPL.leave}, forgot:{...DEFAULT_TPL.forgot}, ot:{...DEFAULT_TPL.ot} };
   }
 }
 
@@ -2148,6 +2219,10 @@ async function saveTpl(){
   emailTpls.leave.sender=G('tplLeaveSender').value;
   emailTpls.leave.subj=G('tplLeaveSubj').value;
   emailTpls.leave.body=G('tplLeaveBody').value;
+  if(!emailTpls.forgot) emailTpls.forgot={};
+  emailTpls.forgot.sender=G('tplForgotSender').value;
+  emailTpls.forgot.subj=G('tplForgotSubj').value;
+  emailTpls.forgot.body=G('tplForgotBody').value;
   emailTpls.ot.sender=G('tplOtSender').value;
   emailTpls.ot.subj=G('tplOtSubj').value;
   emailTpls.ot.body=G('tplOtBody').value;
