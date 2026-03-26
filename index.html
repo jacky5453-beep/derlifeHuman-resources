@@ -1089,8 +1089,40 @@ function runAudit(){
     });
   }
 
-  // 1. Absence — check leave map first, then forgot map
-  absRows=attData.filter(r=>String(r['比對結果']||'').trim()==='未打卡').map(r=>{
+  // Build invalidForgotSet: 來源=忘刷申請 但對應忘刷申請全部已終止 → 視同未打卡
+  // key = 姓名|工作日期|卡別 → 這些打卡列需要被重新判定
+  const invalidForgotSet = new Set();
+  if(forgotData){
+    attData.forEach(r=>{
+      const src=String(r['來源']||'').trim();
+      if(src!=='忘刷申請')return;
+      const res=String(r['比對結果']||'').trim();
+      // 只處理非「正常」的（遲到、已處理、空白等）
+      if(res==='正常')return;
+      const name=String(r['姓名']||'').trim();
+      const d=nd(r['工作日期']);
+      // 如果 forgotMap 裡沒有這個人這天的有效申請（已終止都被排除了），就標記
+      if(!(forgotMap[name+'|'+d]||[]).length){
+        invalidForgotSet.add(name+'|'+d+'|'+(r['卡別']||''));
+      }
+    });
+  }
+
+  // 1. Absence — 未打卡 + 忘刷申請已終止者（來源=忘刷申請但已失效）
+  const isMissing = r => {
+    const res = String(r['比對結果']||'').trim();
+    const src = String(r['來源']||'').trim();
+    const name = String(r['姓名']||'').trim();
+    const d = nd(r['工作日期']);
+    const card = String(r['卡別']||'');
+    // 原本就是未打卡
+    if(res==='未打卡') return true;
+    // 來源是忘刷申請，但忘刷申請已全部終止（invalid）
+    if(src==='忘刷申請' && invalidForgotSet.has(name+'|'+d+'|'+card)) return true;
+    return false;
+  };
+
+  absRows=attData.filter(isMissing).map(r=>{
     const id=String(r['員工編號']||'').trim();
     const name=String(r['姓名']||'').trim();
     const d=nd(r['工作日期']);
@@ -1106,7 +1138,7 @@ function runAudit(){
       as='已申請忘刷卡';
       lt='';ld='';
       ft=fl.map(f=>String(f['狀態']||'')).join(', ');
-      fd=fl.map(f=>{const s=String(f['忘刷卡時間']||'');return s.split(' ')[0];}).join(', ');
+      fd=fl.map(f=>f._forgotDate||'').join(', ');
     } else {
       as='未申請忘刷卡';lt='';ld='';
     }
@@ -1170,14 +1202,25 @@ function renderAbs(rows){
     } else {
       sb=`<span class="b bo">⚠ 未申請忘刷卡</span>`;
     }
-    const forgotCell=r._as==='已申請忘刷卡'
-      ?`<span class="b bn" style="font-size:11px">✓ 簽核完成</span>`
-      :`<span style="color:var(--muted2);font-size:11px">—</span>`;
+    // 未申請忘刷卡欄：顯示「已終止」提示（如果來源是忘刷申請）
+    const src=String(r['來源']||'').trim();
+    let forgotCell;
+    if(r._as==='已申請忘刷卡'){
+      forgotCell=`<span class="b bn" style="font-size:11px">✓ 簽核完成</span>`;
+    } else if(src==='忘刷申請'){
+      forgotCell=`<span class="b bm" style="font-size:11px">✕ 忘刷申請已終止</span>`;
+    } else {
+      forgotCell=`<span style="color:var(--muted2);font-size:11px">—</span>`;
+    }
+    // 比對結果欄：來源=忘刷申請但已終止的，顯示「未打卡（忘刷終止）」
+    const resLabel = src==='忘刷申請' && r._as!=='已申請忘刷卡'
+      ? `<span class="b bm">未打卡</span> <span style="font-size:10px;color:var(--red)">忘刷已終止</span>`
+      : `<span class="b bm">未打卡</span>`;
     return`<tr class="${rowClass}"><td class="mono" style="color:var(--muted2)">${i+1}</td>
     <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
     <td>${r['部門']||''}</td><td class="mono">${nd(r['工作日期'])}</td>
     <td class="mono">${fdt(r['應刷卡時間'])}</td><td>${r['卡別']||''}</td>
-    <td><span class="b bm">未打卡</span></td><td>${sb}</td>
+    <td>${resLabel}</td><td>${sb}</td>
     <td style="color:var(--accent)">${r._lt}</td><td class="mono">${r._ld}</td>
     <td>${forgotCell}</td></tr>`;
   }).join('');
