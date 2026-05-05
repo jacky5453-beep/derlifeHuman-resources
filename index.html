@@ -987,8 +987,8 @@ function parseForgot(raw){
   for(let i=hi+1;i<raw.length;i++){
     const r=raw[i];if(r.every(c=>c===''))continue;
     const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);
-    // Normalize 忘刷卡時間 → _forgotDate (YYYY/MM/DD)
-    o._forgotDate = parseForgotDate(o['忘刷卡時間']);
+    // Normalize 忘刷卡時間（或舊格式 摘要資訊）→ _forgotDate (YYYY/MM/DD)
+    o._forgotDate = parseForgotDate(o['忘刷卡時間'] ?? o['摘要資訊']);
     res.push(o);
   }
   return res;
@@ -1298,7 +1298,7 @@ function renderFg(rows){
     const sb=status==='簽核完成'?`<span class="b bn">✓ 簽核完成</span>`:
              status==='已終止'?`<span class="b bd" style="text-decoration:line-through;opacity:.6">✕ 已終止</span>`:
              `<span class="b by">${status}</span>`;
-    const dateDisplay=r._forgotDate||(String(r['忘刷卡時間']||'').split('.')[0]);
+    const dateDisplay=r._forgotDate||(String(r['忘刷卡時間']||r['摘要資訊']||'').split('.')[0]);
     const isExcluded=status!=='簽核完成';
     return`<tr style="${isExcluded?'opacity:.5':''}">
     <td class="mono" style="color:var(--muted2)">${i+1}</td>
@@ -1402,7 +1402,7 @@ function exportResult(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(oh),'超時出勤比對');
   if(forgotData&&forgotData.length){
     const fh=[['序號','表單編號','申請人','部門','忘刷卡時間','狀態','申請日期']];
-    forgotData.forEach(r=>fh.push([r['序號']||'',r['表單編號']||'',r['申請人']||'',r['部門']||'',r['忘刷卡時間']||'',r['狀態']||'',r['申請日期']||'']));
+    forgotData.forEach(r=>fh.push([r['序號']||'',r['表單編號']||'',r['申請人']||'',r['部門']||'',r['忘刷卡時間']||r['摘要資訊']||'',r['狀態']||'',r['申請日期']||'']));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fh),'忘刷卡申請明細');
   }
   XLSX.writeFile(wb,`打卡比對結果_${new Date().toISOString().slice(0,10)}.xlsx`);
