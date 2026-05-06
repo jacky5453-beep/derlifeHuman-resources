@@ -1089,36 +1089,15 @@ function runAudit(){
     });
   }
 
-  // Build invalidForgotSet: 來源=忘刷申請 但對應忘刷申請全部已終止 → 視同未打卡
-  // key = 姓名|工作日期|卡別 → 這些打卡列需要被重新判定
-  const invalidForgotSet = new Set();
-  if(forgotData){
-    attData.forEach(r=>{
-      const src=String(r['來源']||'').trim();
-      if(src!=='忘刷申請')return;
-      const res=String(r['比對結果']||'').trim();
-      // 只處理非「正常」的（遲到、已處理、空白等）
-      if(res==='正常')return;
-      const name=String(r['姓名']||'').trim();
-      const d=nd(r['工作日期']);
-      // 如果 forgotMap 裡沒有這個人這天的有效申請（已終止都被排除了），就標記
-      if(!(forgotMap[name+'|'+d]||[]).length){
-        invalidForgotSet.add(name+'|'+d+'|'+(r['卡別']||''));
-      }
-    });
-  }
-
-  // 1. Absence — 未打卡 + 忘刷申請已終止者（來源=忘刷申請但已失效）
+  // 1. Absence — 比對結果=未打卡 OR 來源=忘刷申請
+  //    HR 匯出時，已簽核的忘刷申請列會被「補正」為 比對結果=正常、來源=忘刷申請；
+  //    這些列其實就是該員工當天有忘刷申請的事實，需要納入比對表呈現「已申請忘刷卡」。
+  //    若 forgotMap 查不到（=申請已終止/不存在），後續會落到「未申請忘刷卡」。
   const isMissing = r => {
     const res = String(r['比對結果']||'').trim();
     const src = String(r['來源']||'').trim();
-    const name = String(r['姓名']||'').trim();
-    const d = nd(r['工作日期']);
-    const card = String(r['卡別']||'');
-    // 原本就是未打卡
     if(res==='未打卡') return true;
-    // 來源是忘刷申請，但忘刷申請已全部終止（invalid）
-    if(src==='忘刷申請' && invalidForgotSet.has(name+'|'+d+'|'+card)) return true;
+    if(src==='忘刷申請') return true;
     return false;
   };
 
@@ -1204,6 +1183,7 @@ function renderAbs(rows){
     }
     // 未申請忘刷卡欄：顯示「已終止」提示（如果來源是忘刷申請）
     const src=String(r['來源']||'').trim();
+    const rawRes=String(r['比對結果']||'').trim();
     let forgotCell;
     if(r._as==='已申請忘刷卡'){
       forgotCell=`<span class="b bn" style="font-size:11px">✓ 簽核完成</span>`;
@@ -1212,10 +1192,24 @@ function renderAbs(rows){
     } else {
       forgotCell=`<span style="color:var(--muted2);font-size:11px">—</span>`;
     }
-    // 比對結果欄：來源=忘刷申請但已終止的，顯示「未打卡（忘刷終止）」
-    const resLabel = src==='忘刷申請' && r._as!=='已申請忘刷卡'
-      ? `<span class="b bm">未打卡</span> <span style="font-size:10px;color:var(--red)">忘刷已終止</span>`
-      : `<span class="b bm">未打卡</span>`;
+    // 比對結果欄：依原始打卡狀態顯示
+    //  - 比對結果=未打卡 → 紅色「未打卡」
+    //  - 來源=忘刷申請 + 已申請忘刷卡 → 灰底「已忘刷補正」（HR 已補成正常）
+    //  - 來源=忘刷申請 + 未申請忘刷卡 → 紅色「未打卡」+「忘刷已終止」副標
+    let resLabel;
+    if(rawRes==='未打卡'){
+      resLabel=`<span class="b bm">未打卡</span>`;
+      if(src==='忘刷申請' && r._as!=='已申請忘刷卡'){
+        resLabel+=` <span style="font-size:10px;color:var(--red)">忘刷已終止</span>`;
+      }
+    } else if(src==='忘刷申請' && r._as==='已申請忘刷卡'){
+      resLabel=`<span class="b bd" style="font-size:11px">已忘刷補正</span>`;
+      rowClass=''; // 已補正、已申請，不標紅
+    } else if(src==='忘刷申請'){
+      resLabel=`<span class="b bm">未打卡</span> <span style="font-size:10px;color:var(--red)">忘刷已終止</span>`;
+    } else {
+      resLabel=`<span class="b bm">${rawRes||'未打卡'}</span>`;
+    }
     return`<tr class="${rowClass}"><td class="mono" style="color:var(--muted2)">${i+1}</td>
     <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
     <td>${r['部門']||''}</td><td class="mono">${nd(r['工作日期'])}</td>
