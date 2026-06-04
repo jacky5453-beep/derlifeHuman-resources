@@ -46,7 +46,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 :root {
   --bg:#f4f6f9; --bg2:#ffffff; --bg3:#f0f2f5; --border:#e2e6ea; --border2:#d0d5dd;
-  --accent:#2563eb; --al:#eff6ff;
+  --accent:#5f7d00; --al:#f3fadf;
+  --brand:#C3F000; --brand-dark:#1A1A16; --brand-orange:#FFAA00;
   --red:#dc2626; --rl:#fef2f2;
   --orange:#ea580c; --ol:#fff7ed;
   --green:#16a34a; --gl:#f0fdf4;
@@ -60,12 +61,13 @@
 body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 
 /* HEADER */
-.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
-.hdr-l{display:flex;align-items:center;gap:10px}
-.hdr-ico{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
-.hdr-t{font-weight:700;font-size:16px}
-.hdr-s{font-size:12px;color:var(--muted)}
-.hdr-time{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.hdr{background:var(--brand-dark);border-bottom:1px solid #2c2c26;padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.hdr-l{display:flex;align-items:center;gap:14px}
+.hdr-logo{height:28px;width:auto;display:block}
+.hdr-divider{width:1px;height:26px;background:rgba(255,255,255,.16)}
+.hdr-t{font-weight:700;font-size:15px;color:#fff}
+.hdr-s{font-size:11px;color:#9ba08a;letter-spacing:.02em}
+.hdr-time{font-size:12px;color:#9ba08a;font-family:'JetBrains Mono',monospace}
 
 /* MAIN */
 .main{padding:24px 32px}
@@ -87,8 +89,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text
 /* ACTIONS */
 .acts{display:flex;align-items:center;gap:10px;margin-bottom:20px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:7px;font-size:13px;font-weight:600;font-family:'Noto Sans TC',sans-serif;cursor:pointer;border:none;transition:all .15s}
-.btn-p{background:var(--accent);color:#fff}
-.btn-p:hover:not(:disabled){background:#1d4ed8;box-shadow:0 2px 8px rgba(37,99,235,.35)}
+.btn-p{background:var(--brand);color:var(--brand-dark);font-weight:700}
+.btn-p:hover:not(:disabled){background:#b2dd00;box-shadow:0 2px 10px rgba(195,240,0,.5)}
 .btn-p:disabled{opacity:.4;cursor:not-allowed}
 .btn-g{background:var(--bg2);color:var(--text2);border:1px solid var(--border2)}
 .btn-g:hover{border-color:var(--accent);color:var(--accent);background:var(--al)}
@@ -170,13 +172,14 @@ tr.rm:hover td{background:#fff3ec}
 .mono{font-family:'JetBrains Mono',monospace}
 
 /* ── LOGIN SCREEN ── */
-#loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,#f0f4ff 0%,#e8f0fe 50%,#f0fdf4 100%);z-index:1000;display:flex;align-items:center;justify-content:center}
-.login-card{background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(37,99,235,.12),0 2px 8px rgba(0,0,0,.06);padding:48px 44px;width:100%;max-width:420px;text-align:center}
-.login-logo{width:56px;height:56px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 20px}
+#loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,#f3fadf 0%,#e8f5cb 50%,#f0fdf4 100%);z-index:1000;display:flex;align-items:center;justify-content:center}
+.login-card{background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(95,125,0,.14),0 2px 8px rgba(0,0,0,.06);padding:44px 44px 40px;width:100%;max-width:420px;text-align:center}
+.login-logo{display:inline-flex;align-items:center;justify-content:center;background:var(--brand-dark);border-radius:16px;padding:16px 24px;margin:0 auto 22px}
+.login-logo img{height:30px;width:auto;display:block}
 .login-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px}
 .login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.6}
 .login-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border-radius:10px;border:1.5px solid var(--border2);background:#fff;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);font-family:'Noto Sans TC',sans-serif;transition:all .18s;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.login-google-btn:hover{border-color:var(--accent);background:var(--al);box-shadow:0 3px 10px rgba(37,99,235,.15);transform:translateY(-1px)}
+.login-google-btn:hover{border-color:var(--accent);background:var(--al);box-shadow:0 3px 10px rgba(95,125,0,.15);transform:translateY(-1px)}
 .login-google-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .login-google-icon{width:20px;height:20px;flex-shrink:0}
 .login-divider{display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--muted2);font-size:12px}
@@ -187,9 +190,9 @@ tr.rm:hover td{background:#fff3ec}
 .login-footer{margin-top:28px;font-size:11px;color:var(--muted2);line-height:1.7}
 
 /* ── USER BADGE in header ── */
-.user-badge{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text2)}
-.user-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.user-logout{background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:2px 4px;border-radius:4px;margin-left:2px;font-family:'Noto Sans TC',sans-serif}
+.user-badge{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:20px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);font-size:12px;font-weight:600;color:#e8eadf}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--brand-dark);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-logout{background:none;border:none;cursor:pointer;color:#9ba08a;font-size:11px;padding:2px 4px;border-radius:4px;margin-left:2px;font-family:'Noto Sans TC',sans-serif}
 .user-logout:hover{color:var(--red);background:var(--rl)}
 
 /* ── WHITELIST MODAL ── */
@@ -241,7 +244,7 @@ tr.rm:hover td{background:#fff3ec}
 .tpl-textarea:focus{border-color:var(--accent);background:var(--bg2)}
 .tpl-hint{font-size:11px;color:var(--muted2);margin-top:5px;line-height:1.6}
 .tpl-vars{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.tpl-var{padding:2px 8px;background:var(--al);color:var(--accent);border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;font-family:'JetBrains Mono',monospace;border:1px solid rgba(37,99,235,.2)}
+.tpl-var{padding:2px 8px;background:var(--al);color:var(--accent);border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;font-family:'JetBrains Mono',monospace;border:1px solid rgba(95,125,0,.2)}
 .tpl-var:hover{background:var(--accent);color:#fff}
 
 /* ── EMAIL SEND MODAL ── */
@@ -262,9 +265,9 @@ tr.rm:hover td{background:#fff3ec}
 
 /* ── NAV BUTTONS in header ── */
 .hdr-btns{display:flex;align-items:center;gap:8px}
-.hdr-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'Noto Sans TC',sans-serif;transition:all .15s}
-.hdr-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--al)}
-.hdr-btn.has-data{border-color:var(--green);color:var(--green);background:var(--gl)}
+.hdr-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#e8eadf;font-family:'Noto Sans TC',sans-serif;transition:all .15s}
+.hdr-btn:hover{border-color:var(--brand);color:var(--brand);background:rgba(195,240,0,.12)}
+.hdr-btn.has-data{border-color:var(--brand);color:var(--brand);background:rgba(195,240,0,.12)}
 
 /* ── EDITABLE LABEL ── */
 [ondblclick]{cursor:pointer;position:relative;}
@@ -280,6 +283,30 @@ tr.rm:hover td{background:#fff3ec}
 .edit-icon-custom{display:flex;gap:8px;align-items:center;margin-bottom:14px;}
 .edit-icon-inp{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:8px 11px;font-size:24px;text-align:center;outline:none;}
 .edit-icon-inp:focus{border-color:var(--accent);}
+/* ── 響應式（RWD）── */
+@media(max-width:860px){
+  .hdr{height:auto;flex-wrap:wrap;padding:10px 16px;gap:10px}
+  .hdr-l{gap:10px}
+  .hdr-btns{width:100%;flex-wrap:wrap;gap:6px}
+  .hdr-btn{font-size:11px;padding:5px 9px}
+  .user-badge{margin-left:auto}
+  .hdr-time{display:none}
+}
+@media(max-width:640px){
+  .main{padding:16px}
+  .hdr-s{display:none}
+  .hdr-logo{height:24px}
+  .ups{grid-template-columns:1fr 1fr;gap:10px}
+  .db-grid{grid-template-columns:1fr 1fr!important}
+  .acts{flex-wrap:wrap}
+  .acts .btn{flex:1;justify-content:center;min-width:120px}
+  .tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .tab{white-space:nowrap;flex-shrink:0}
+}
+@media(max-width:430px){
+  .ups{grid-template-columns:1fr}
+  .db-grid{grid-template-columns:1fr!important}
+}
 </style>
 </head>
 <body>
@@ -287,7 +314,7 @@ tr.rm:hover td{background:#fff3ec}
 <!-- ════ LOGIN SCREEN ════ -->
 <div id="loginScreen" style="display:none">
   <div class="login-card">
-    <div class="login-logo" id="loginLogo" ondblclick="editIcon(this)" title="雙擊更換圖示" style="cursor:pointer">📋</div>
+    <div class="login-logo"><img src="logo.png" alt="得來素 DerLife"></div>
     <div class="login-title" id="loginTitle" ondblclick="editLabel(this)" title="雙擊編輯">出勤打卡比對系統</div>
     <div class="login-sub">此系統僅限授權人員使用<br>請使用公司 Google 帳號登入</div>
     <button class="login-google-btn" id="loginBtn" onclick="doGoogleLogin()">
@@ -306,7 +333,8 @@ tr.rm:hover td{background:#fff3ec}
 
 <div class="hdr" id="mainHdr" style="display:none">
   <div class="hdr-l">
-    <div class="hdr-ico" id="hdrIco" ondblclick="editIcon(this)" title="雙擊更換圖示" style="cursor:pointer">📋</div>
+    <img src="logo.png" class="hdr-logo" alt="得來素 DerLife">
+    <div class="hdr-divider"></div>
     <div><div class="hdr-t" id="hdrTitle" ondblclick="editLabel(this)" title="雙擊編輯">出勤打卡比對系統</div><div class="hdr-s">Attendance Comparison System</div></div>
   </div>
   <div class="hdr-btns">
@@ -596,7 +624,7 @@ tr.rm:hover td{background:#fff3ec}
       <button class="modal-close" onclick="closeWlModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div style="background:var(--al);border:1px solid rgba(37,99,235,.15);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
+      <div style="background:var(--al);border:1px solid rgba(95,125,0,.15);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
         ℹ️ 只有在此清單中的 Google 帳號才能登入系統。
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -627,7 +655,7 @@ tr.rm:hover td{background:#fff3ec}
       <button class="modal-close" onclick="closeHistModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div style="background:var(--al);border:1px solid rgba(37,99,235,.15);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
+      <div style="background:var(--al);border:1px solid rgba(95,125,0,.15);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
         ℹ️ 每次執行比對都會自動留存。可隨時「查看」載回結果表，或「下載」當時的 Excel。
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
@@ -706,7 +734,7 @@ tr.rm:hover td{background:#fff3ec}
         </div>
 
         <!-- Step guide -->
-        <div style="background:var(--al);border:1px solid rgba(37,99,235,.2);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="background:var(--al);border:1px solid rgba(95,125,0,.2);border-radius:10px;padding:16px;margin-bottom:16px">
           <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:12px;letter-spacing:.04em">📋 設定步驟（一次性，約 5 分鐘）</div>
           <div style="display:flex;flex-direction:column;gap:10px">
             <div style="display:flex;gap:10px;align-items:flex-start">
