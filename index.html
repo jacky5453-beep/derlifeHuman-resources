@@ -312,6 +312,7 @@ tr.rm:hover td{background:#fff3ec}
   <div class="hdr-btns">
     <button class="hdr-btn" id="hdrEmpBtn" onclick="openEmpModal()">👥 員工資料庫 <span id="empCount" style="font-family:'JetBrains Mono',monospace;font-size:11px"></span></button>
     <button class="hdr-btn" onclick="openTplModal()">✉️ Email 模板設定</button>
+    <button class="hdr-btn" id="histBtn" onclick="openHistModal()">📜 比對歷史 <span id="histCount" style="font-family:'JetBrains Mono',monospace;font-size:11px"></span></button>
     <button class="hdr-btn" id="wlBtn" onclick="openWlModal()" style="display:none">🔐 登入權限管理</button>
     <div class="user-badge" id="userBadge" style="display:none">
       <div class="user-avatar" id="userAvatarTxt"></div>
@@ -617,6 +618,29 @@ tr.rm:hover td{background:#fff3ec}
   </div>
 </div>
 <!-- ════════════════════════════════════════
+     MODAL: 比對歷史
+════════════════════════════════════════ -->
+<div id="histModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeHistModal()">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-hdr">
+      <div class="modal-title">📜 比對歷史</div>
+      <button class="modal-close" onclick="closeHistModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--al);border:1px solid rgba(37,99,235,.15);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--accent);margin-bottom:16px">
+        ℹ️ 每次執行比對都會自動留存。可隨時「查看」載回結果表，或「下載」當時的 Excel。
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+        歷次紀錄 <span id="histListCount" style="font-family:'JetBrains Mono',monospace;font-weight:400"></span>
+      </div>
+      <div id="histList" style="max-height:440px;overflow-y:auto"><div style="text-align:center;padding:24px;color:var(--muted2);font-size:13px">載入中…</div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-p" onclick="closeHistModal()" style="font-size:12px">關閉</button>
+    </div>
+  </div>
+</div>
+<!-- ════════════════════════════════════════
      MODAL 1: 員工資料庫
 ════════════════════════════════════════ -->
 <div id="empModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeEmpModal()">
@@ -910,6 +934,10 @@ function buildResponse(data) {
 <script>
 let attData=null,leaveData=null,otData=null,forgotData=null,absRows=[],otRows=[];
 let aAbsF='',aOtF='';
+// 記錄四張來源檔名（給比對歷史用）
+let srcNames={attendance:'',leave:'',overtime:'',forgot:''};
+// 目前是否正在檢視歷史紀錄（檢視中不重複存檔）
+let viewingHist=false;
 
 // ─── DRAG DROP ───
 function onDrag(e,id){e.preventDefault();document.getElementById(id).classList.add('dragover')}
@@ -922,10 +950,10 @@ function loadFile(e,t){const f=e.target.files[0];if(f)processFile(f,t)}
 // ─── CLEAR SINGLE CARD ───
 function clearCard(e, n, type){
   e.stopPropagation(); // don't trigger file picker
-  if(type==='attendance') attData=null;
-  else if(type==='leave') leaveData=null;
-  else if(type==='overtime') otData=null;
-  else if(type==='forgot') forgotData=null;
+  if(type==='attendance'){attData=null;srcNames.attendance='';}
+  else if(type==='leave'){leaveData=null;srcNames.leave='';}
+  else if(type==='overtime'){otData=null;srcNames.overtime='';}
+  else if(type==='forgot'){forgotData=null;srcNames.forgot='';}
   // Reset card UI
   G('name'+n).textContent='點擊或拖曳上傳 .xlsx';
   const s=G('status'+n); s.textContent='尚未載入'; s.className='ups-t';
@@ -942,10 +970,10 @@ function processFile(file,type){
     const wb=XLSX.read(ev.target.result,{type:'array'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-    if(type==='attendance'){attData=parseAtt(raw);setupCard(1,file.name,attData.length)}
-    else if(type==='leave'){leaveData=parseLeave(raw);setupCard(2,file.name,leaveData.length)}
-    else if(type==='overtime'){otData=parseOT(raw);setupCard(3,file.name,otData.length)}
-    else if(type==='forgot'){forgotData=parseForgot(raw);setupCard(4,file.name,forgotData.length)}
+    if(type==='attendance'){attData=parseAtt(raw);srcNames.attendance=file.name;setupCard(1,file.name,attData.length)}
+    else if(type==='leave'){leaveData=parseLeave(raw);srcNames.leave=file.name;setupCard(2,file.name,leaveData.length)}
+    else if(type==='overtime'){otData=parseOT(raw);srcNames.overtime=file.name;setupCard(3,file.name,otData.length)}
+    else if(type==='forgot'){forgotData=parseForgot(raw);srcNames.forgot=file.name;setupCard(4,file.name,forgotData.length)}
     checkReady();
   };
   r.readAsArrayBuffer(file);
@@ -1166,6 +1194,10 @@ function runAudit(){
   if(forgotData)renderFg(forgotData);
   S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
   toast(`比對完成 ✓  未打卡 ${absRows.length} 筆（忘刷卡已申請 ${fc} 筆｜異常 ${nc} 筆）｜超時 ${ot} 筆`,'success');
+
+  // 每次比對自動留存歷史（不阻塞畫面）
+  const stats={total:attData.length,miss:absRows.length,leave:lc,forgot:fc,noApp:nc,ot:ot,otNR:onr,otNA:ona,otOk:ook};
+  saveHistory(stats);
 }
 
 // ─── RENDER ───
@@ -1382,30 +1414,36 @@ function srt(tid,col){
 }
 
 // ─── EXPORT ───
-function exportResult(){
+// 由結果列組出 Excel 工作簿（exportResult 與歷史下載共用）
+function buildWorkbook(absR,otR,forgotR){
   const wb=XLSX.utils.book_new();
   const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期','未申請忘刷卡']];
-  absRows.forEach(r=>ah.push([
+  absR.forEach(r=>ah.push([
     r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),
     r['卡別']||'',r['比對結果']||'',r._as,r._lt,r._ld,
     r._as==='已申請忘刷卡'?'簽核完成':''
   ]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ah),'未打卡比對');
   const oh=[['員工編號','姓名','部門','工作日期','卡別','超時出勤','超時出勤原因','比對狀態','加班申請日期']];
-  otRows.forEach(r=>oh.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),r['卡別']||'',r['超時出勤']||'',r._or,r._os,r._oad]));
+  otR.forEach(r=>oh.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),r['卡別']||'',r['超時出勤']||'',r._or,r._os,r._oad]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(oh),'超時出勤比對');
-  if(forgotData&&forgotData.length){
+  if(forgotR&&forgotR.length){
     const fh=[['序號','表單編號','申請人','部門','忘刷卡時間','狀態','申請日期']];
-    forgotData.forEach(r=>fh.push([r['序號']||'',r['表單編號']||'',r['申請人']||'',r['部門']||'',r['忘刷卡時間']||r['摘要資訊']||'',r['狀態']||'',r['申請日期']||'']));
+    forgotR.forEach(r=>fh.push([r['序號']||'',r['表單編號']||'',r['申請人']||'',r['部門']||'',r['忘刷卡時間']||r['摘要資訊']||'',r['狀態']||'',r['申請日期']||'']));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fh),'忘刷卡申請明細');
   }
-  XLSX.writeFile(wb,`打卡比對結果_${new Date().toISOString().slice(0,10)}.xlsx`);
+  return wb;
+}
+function exportResult(){
+  const wb=buildWorkbook(absRows,otRows,forgotData);
+  XLSX.writeFile(wb,`打卡比對結果_${twStamp().slice(0,10)}.xlsx`);
   toast('比對結果已匯出','success');
 }
 
 // ─── CLEAR ───
 function clearAll(){
   attData=leaveData=otData=forgotData=null;absRows=otRows=[];aAbsF=aOtF='';
+  srcNames={attendance:'',leave:'',overtime:'',forgot:''};viewingHist=false;exitHistBanner();
   clearCards([...ABS_CARDS,...OT_CARDS]);
   [1,2,3,4].forEach(n=>{G('name'+n).textContent='點擊或拖曳上傳 .xlsx';const s=G('status'+n);s.textContent='尚未載入';s.className='ups-t';G('card'+n).classList.remove('loaded');});
   G('dashSection').style.display='none';G('tabsSection').style.display='none';
@@ -2289,6 +2327,172 @@ async function loadGasUrl(){
     _gasUrl = data ? data.url || '' : '';
   }
   return _gasUrl;
+}
+
+// ════════════════════════════════════════
+//  比對歷史（Firestore：settings/hist_*）
+// ════════════════════════════════════════
+
+// 台灣時間字串 YYYY-MM-DD HH:mm:ss
+function twStamp(){
+  const f=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',
+    year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const p={};f.formatToParts(new Date()).forEach(x=>p[x.type]=x.value);
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+}
+
+let _histCache={};
+let _suppressSave=false;  // 離開歷史檢視重跑比對時，不重複留存
+
+// 每次比對自動留存
+async function saveHistory(stats){
+  if(_suppressSave){_suppressSave=false;return;}
+  if(!window._fb||viewingHist)return;
+  const ts=twStamp();
+  const id='hist_'+ts.replace(/[-: ]/g,'')+'_'+Math.random().toString(36).slice(2,6);
+  const trimAbs=absRows.map(r=>({
+    '員工編號':r['員工編號']||'','姓名':r['姓名']||'','部門':r['部門']||'',
+    '工作日期':nd(r['工作日期']),'應刷卡時間':fdt(r['應刷卡時間']),'卡別':r['卡別']||'',
+    '比對結果':r['比對結果']||'','來源':r['來源']||'',
+    _as:r._as||'',_lt:r._lt||'',_ld:r._ld||''
+  }));
+  const trimOt=otRows.map(r=>({
+    '員工編號':r['員工編號']||'','姓名':r['姓名']||'','部門':r['部門']||'',
+    '工作日期':nd(r['工作日期']),'應刷卡時間':fdt(r['應刷卡時間']),'實際打卡時間':fdt(r['實際打卡時間']),
+    '卡別':r['卡別']||'','超時出勤':r['超時出勤']||'',_or:r._or||'',_os:r._os||'',_oad:r._oad||''
+  }));
+  const rec={createdAt:new Date().toISOString(),createdAtTW:ts,
+    ranBy:{email:currentUser?.email||'',name:currentUser?.name||''},
+    fileNames:{...srcNames},stats:stats,abs:trimAbs,ot:trimOt};
+  // 1MB 文件上限保護：結果列過大時只留統計
+  if(JSON.stringify(rec).length>900000){rec.abs=[];rec.ot=[];rec.truncated=true;}
+  const ok=await fsSet('settings/'+id,rec);
+  if(ok)toast('已留存本次比對紀錄 📜','success');
+}
+
+function openHistModal(){ G('histModal').style.display='flex'; loadHistList(); }
+function closeHistModal(){ G('histModal').style.display='none'; }
+
+async function loadHistList(){
+  const list=G('histList');
+  if(!window._fb){list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted2)">Firebase 未就緒</div>';return;}
+  list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted2);font-size:13px">載入中…</div>';
+  const { db, collection, getDocs } = window._fb;
+  _histCache={};
+  try{
+    const snap=await getDocs(collection(db,'settings'));
+    snap.forEach(d=>{ if(d.id.startsWith('hist_')) _histCache[d.id]=d.data(); });
+  }catch(e){
+    list.innerHTML='<div style="text-align:center;padding:24px;color:var(--red)">讀取失敗：'+e.message+'</div>';return;
+  }
+  const recs=Object.entries(_histCache).map(([id,r])=>({id,...r}))
+    .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  S('histCount',recs.length?'('+recs.length+')':'');
+  S('histListCount','共 '+recs.length+' 筆');
+  renderHistList(recs);
+}
+
+function renderHistList(recs){
+  const list=G('histList');
+  if(!recs.length){list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted2);font-size:13px">尚無歷史紀錄，執行一次比對後就會自動留存</div>';return;}
+  const isAdmin=currentUser?.role==='admin';
+  list.innerHTML=recs.map(r=>{
+    const s=r.stats||{};
+    const files=Object.values(r.fileNames||{}).filter(Boolean);
+    const fileTxt=files.length?files.join('　'):'（無檔名）';
+    const who=r.ranBy?.name||r.ranBy?.email||'';
+    const trunc=r.truncated?' <span style="color:var(--orange);font-size:10px">（資料量大，僅存統計）</span>':'';
+    return `<div class="wl-item" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text2)">🕐 ${r.createdAtTW||''}</span>
+          ${who?`<span style="font-size:11px;color:var(--muted2);margin-left:8px">by ${who}</span>`:''}${trunc}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-p" style="font-size:11px;padding:4px 10px" onclick="viewHist('${r.id}')">👁 查看</button>
+          <button class="btn btn-g" style="font-size:11px;padding:4px 10px" onclick="downloadHist('${r.id}')">⬇ 下載</button>
+          ${isAdmin?`<button class="wl-del" style="font-size:13px" title="刪除" onclick="delHist('${r.id}')">✕</button>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px">
+        <span class="b bd">總筆數 ${s.total??'-'}</span>
+        <span class="b bm">未打卡 ${s.miss??'-'}</span>
+        <span class="b bo">未申請忘刷 ${s.noApp??'-'}</span>
+        <span class="b bl">已請假 ${s.leave??'-'}</span>
+        <span class="b by">超時 ${s.ot??'-'}</span>
+        <span class="b bo">加班未申請 ${s.otNA??'-'}</span>
+      </div>
+      <div style="font-size:10px;color:var(--muted2);word-break:break-all">📂 ${fileTxt}</div>
+    </div>`;
+  }).join('');
+}
+
+function viewHist(id){
+  const r=_histCache[id];if(!r)return;
+  if((attData||absRows.length)&&!viewingHist && !confirm('查看歷史會以該次結果覆蓋目前畫面（不影響已存的歷史與上傳的檔案）。要繼續嗎？'))return;
+  viewingHist=true;
+  absRows=(r.abs||[]).slice();
+  otRows=(r.ot||[]).slice();
+  const s=r.stats||{};
+  S('statTotal',s.total??'-');S('statMiss',s.miss??'-');S('statLeave',s.leave??'-');
+  S('statForgot',s.forgot??'-');S('statNoApp',s.noApp??'-');
+  S('statOt',s.ot??'-');S('statOtNR',s.otNR??'-');S('statOtNA',s.otNA??'-');S('statOtOk',s.otOk??'-');
+  S('tbA',absRows.length);S('tbOT',otRows.length);
+  G('dashSection').style.display='';G('tabsSection').style.display='';G('emptyState').style.display='none';
+  G('exportBtn').style.display='';
+  renderAbs(absRows);renderOt(otRows);
+  S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
+  // 原始明細四個分頁在歷史檢視下沒有資料
+  ['bAtt','bLv','bOv','bFg'].forEach(tb=>{const e=G(tb);if(e)e.innerHTML='<tr><td colspan="20" style="text-align:center;padding:32px;color:var(--muted2);font-size:12px">歷史紀錄僅保留比對結果，未含原始明細</td></tr>';});
+  G('lastUpdate').textContent='📜 檢視歷史：'+(r.createdAtTW||'');
+  showHistBanner(r);
+  // 切到「未打卡比對」分頁
+  const t=document.querySelector('.tabs .tab');if(t)t.click();
+  closeHistModal();
+  toast('已載入歷史紀錄','success');
+}
+
+function downloadHist(id){
+  const r=_histCache[id];if(!r)return;
+  if(r.truncated||((!r.abs||!r.abs.length)&&(!r.ot||!r.ot.length))){
+    toast('此紀錄未保留明細，無法下載','error');return;
+  }
+  const wb=buildWorkbook(r.abs||[],r.ot||[],null);
+  const stamp=(r.createdAtTW||twStamp()).slice(0,10);
+  XLSX.writeFile(wb,`打卡比對結果_${stamp}.xlsx`);
+  toast('已下載歷史 Excel','success');
+}
+
+async function delHist(id){
+  if(currentUser?.role!=='admin'){toast('只有管理員可刪除','error');return;}
+  const r=_histCache[id];
+  if(!confirm(`確定刪除這筆歷史紀錄？\n${r?.createdAtTW||id}\n此動作無法復原。`))return;
+  const { db, doc, deleteDoc } = window._fb;
+  try{ await deleteDoc(doc(db,'settings',id)); }catch(e){ toast('刪除失敗：'+e.message,'error');return; }
+  toast('已刪除','success');
+  loadHistList();
+}
+
+// 歷史檢視提示橫幅
+function showHistBanner(r){
+  exitHistBanner();
+  const ds=G('dashSection');if(!ds)return;
+  const bar=document.createElement('div');
+  bar.id='histBanner';
+  bar.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--ol);border:1px solid var(--orange);border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:var(--orange);font-weight:600';
+  bar.innerHTML=`<span>📜 正在檢視歷史紀錄：${r.createdAtTW||''}（這不是即時比對結果）</span>
+    <button class="btn btn-g" style="font-size:12px;padding:5px 12px" onclick="exitHistView()">✕ 離開歷史檢視</button>`;
+  ds.parentNode.insertBefore(bar,ds);
+}
+function exitHistBanner(){ const b=G('histBanner');if(b)b.remove(); }
+function exitHistView(){
+  viewingHist=false;exitHistBanner();G('lastUpdate').textContent='';
+  if(attData&&leaveData){ _suppressSave=true; runAudit(); }   // 有上傳檔案就回到即時比對（不重複留存）
+  else {
+    absRows=otRows=[];
+    G('dashSection').style.display='none';G('tabsSection').style.display='none';
+    G('emptyState').style.display='';G('exportBtn').style.display='none';
+  }
 }
 
 // ─── INIT ───
