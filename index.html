@@ -1127,21 +1127,25 @@ function runAudit(){
     });
   }
 
-  // Build forgotMap: key = 姓名|日期
-  // 步驟1：排除「已終止」及非「簽核完成」的申請
+  // Build forgotMap / forgotPendingMap: key = 姓名|日期
+  // 步驟1：排除「已終止」（=已撤回的申請）
   // 步驟2：以申請人姓名 + 忘刷卡日期建立 map
+  //   - 狀態=簽核完成 → forgotMap（已完成）
+  //   - 其餘（簽核中／待簽核／審核中…）→ forgotPendingMap（有申請、只是主管還沒簽）
+  //   只要有申請就不該算「未申請忘刷卡」，避免冤枉到已送單的員工
   const forgotMap={};
+  const forgotPendingMap={};
   if(forgotData){
     forgotData.forEach(f=>{
       const status=String(f['狀態']||'').trim();
-      // 只接受「簽核完成」，其餘（已終止、審核中…）全部排除
-      if(status!=='簽核完成')return;
+      if(status==='已終止')return; // 已撤回，排除
       const name=String(f['申請人']||'').trim();
       const d=f._forgotDate; // 已在 parseForgot 時轉換好
       if(!name||!d)return;
       const k=name+'|'+d;
-      if(!forgotMap[k])forgotMap[k]=[];
-      forgotMap[k].push(f);
+      const target=(status==='簽核完成')?forgotMap:forgotPendingMap;
+      if(!target[k])target[k]=[];
+      target[k].push(f);
     });
   }
 
@@ -1164,7 +1168,8 @@ function runAudit(){
     const ll=lvMap[id+'|'+d]||[];
     // Check forgot map by name + date
     const fl=forgotMap[name+'|'+d]||[];
-    let as,lt,ld,ft='',fd='';
+    const fp=forgotPendingMap[name+'|'+d]||[];
+    let as,lt,ld,ft='',fd='',pending=false;
     if(ll.length){
       as='已申請請假';
       lt=ll.map(l=>l['假勤項目']).join(', ');
@@ -1174,10 +1179,16 @@ function runAudit(){
       lt='';ld='';
       ft=fl.map(f=>String(f['狀態']||'')).join(', ');
       fd=fl.map(f=>f._forgotDate||'').join(', ');
+    } else if(fp.length){
+      // 有送單、但主管尚未簽核 → 不算未申請
+      as='已申請忘刷卡';pending=true;
+      lt='';ld='';
+      ft=fp.map(f=>String(f['狀態']||'')).join(', ');
+      fd=fp.map(f=>f._forgotDate||'').join(', ');
     } else {
       as='未申請忘刷卡';lt='';ld='';
     }
-    return{...r,_as:as,_lt:lt,_ld:ld,_ft:ft,_fd:fd};
+    return{...r,_as:as,_lt:lt,_ld:ld,_ft:ft,_fd:fd,_pending:pending};
   });
 
   // 2. Overtime
@@ -1197,6 +1208,7 @@ function runAudit(){
   // Stats
   const lc=absRows.filter(r=>r._as==='已申請請假').length;
   const fc=absRows.filter(r=>r._as==='已申請忘刷卡').length;
+  const pc=absRows.filter(r=>r._as==='已申請忘刷卡'&&r._pending).length; // 其中待主管簽核
   const nc=absRows.filter(r=>r._as==='未申請忘刷卡').length;
   const ot=otRows.length;
   const onr=otRows.filter(r=>r._os==='未填原因').length;
@@ -1221,7 +1233,7 @@ function runAudit(){
   if(otData)renderOv(otData);
   if(forgotData)renderFg(forgotData);
   S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
-  toast(`比對完成 ✓  未打卡 ${absRows.length} 筆（忘刷卡已申請 ${fc} 筆｜異常 ${nc} 筆）｜超時 ${ot} 筆`,'success');
+  toast(`比對完成 ✓  未打卡 ${absRows.length} 筆（忘刷卡已申請 ${fc} 筆${pc?`，含待主管簽核 ${pc} 筆`:''}｜異常 ${nc} 筆）｜超時 ${ot} 筆`,'success');
 
   // 每次比對自動留存歷史（不阻塞畫面）
   const stats={total:attData.length,miss:absRows.length,leave:lc,forgot:fc,noApp:nc,ot:ot,otNR:onr,otNA:ona,otOk:ook};
@@ -1236,6 +1248,8 @@ function renderAbs(rows){
     let sb,rowClass='rm';
     if(r._as==='已申請請假'){
       sb=`<span class="b bl">✓ 已申請請假</span>`;rowClass='';
+    } else if(r._as==='已申請忘刷卡' && r._pending){
+      sb=`<span class="b by">🔄 已申請忘刷卡（待主管簽核）</span>`;rowClass='';
     } else if(r._as==='已申請忘刷卡'){
       sb=`<span class="b bn">🔄 已申請忘刷卡</span>`;rowClass='';
     } else {
@@ -1245,7 +1259,9 @@ function renderAbs(rows){
     const src=String(r['來源']||'').trim();
     const rawRes=String(r['比對結果']||'').trim();
     let forgotCell;
-    if(r._as==='已申請忘刷卡'){
+    if(r._as==='已申請忘刷卡' && r._pending){
+      forgotCell=`<span class="b by" style="font-size:11px">⏳ 待主管簽核${r._ft?'（'+r._ft+'）':''}</span>`;
+    } else if(r._as==='已申請忘刷卡'){
       forgotCell=`<span class="b bn" style="font-size:11px">✓ 簽核完成</span>`;
     } else if(src==='忘刷申請'){
       forgotCell=`<span class="b bm" style="font-size:11px">✕ 忘刷申請已終止</span>`;
@@ -1448,8 +1464,8 @@ function buildWorkbook(absR,otR,forgotR){
   const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期','未申請忘刷卡']];
   absR.forEach(r=>ah.push([
     r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),
-    r['卡別']||'',r['比對結果']||'',r._as,r._lt,r._ld,
-    r._as==='已申請忘刷卡'?'簽核完成':''
+    r['卡別']||'',r['比對結果']||'',r._pending?(r._as+'（待主管簽核）'):r._as,r._lt,r._ld,
+    r._as==='已申請忘刷卡'?(r._pending?('待主管簽核'+(r._ft?'（'+r._ft+'）':'')):'簽核完成'):''
   ]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ah),'未打卡比對');
   const oh=[['員工編號','姓名','部門','工作日期','卡別','超時出勤','超時出勤原因','比對狀態','加班申請日期']];
