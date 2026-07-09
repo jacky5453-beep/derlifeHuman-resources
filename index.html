@@ -73,7 +73,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text
 .main{padding:24px 32px}
 
 /* UPLOAD */
-.ups{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.ups{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
 .upc{background:var(--bg2);border:1.5px dashed var(--border2);border-radius:10px;padding:16px 20px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
 .upc:hover,.upc.dragover{border-color:var(--accent);background:var(--al)}
 .upc.loaded{border-style:solid;border-color:var(--accent);background:var(--al)}
@@ -384,6 +384,13 @@ tr.rm:hover td{background:#fff3ec}
       <div class="upn">📂 <span id="name4">點擊或拖曳上傳 .xlsx</span></div>
       <div class="ups-t" id="status4">尚未載入</div>
     </div>
+    <div class="upc" id="card5" ondragover="onDrag(event,'card5')" ondragleave="offDrag(event,'card5')" ondrop="onDrop(event,'card5','trip')">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile(event,'trip')" id="file5">
+      <button class="upc-del" onclick="clearCard(event,5,'trip')" title="移除此檔案">✕</button>
+      <div class="upl">🧳 出差申請明細 <span style="color:var(--muted2)">(選填)</span></div>
+      <div class="upn">📂 <span id="name5">點擊或拖曳上傳 .xlsx</span></div>
+      <div class="ups-t" id="status5">尚未載入</div>
+    </div>
   </div>
 
   <!-- ACTIONS -->
@@ -396,7 +403,7 @@ tr.rm:hover td{background:#fff3ec}
   <!-- DASHBOARD -->
   <div id="dashSection" style="display:none">
     <div class="db-head">📊 打卡異常比對</div>
-    <div class="db-grid" style="grid-template-columns:repeat(5,1fr)">
+    <div class="db-grid" style="grid-template-columns:repeat(6,1fr)">
       <div class="sc" id="cardTotal">
         <div class="sc-ico">📋</div>
         <div class="sc-lbl">打卡資料總筆數</div>
@@ -412,6 +419,12 @@ tr.rm:hover td{background:#fff3ec}
         <div class="sc-ico">✅</div>
         <div class="sc-lbl">已申請請假</div>
         <div class="sc-val c-b" id="statLeave">-</div>
+        <div class="sc-hint">點擊篩選 ↓</div>
+      </div>
+      <div class="sc click" id="cardTrip" onclick="statFilter('trip')">
+        <div class="sc-ico">🧳</div>
+        <div class="sc-lbl">已申請出差</div>
+        <div class="sc-val c-b" id="statTrip">-</div>
         <div class="sc-hint">點擊篩選 ↓</div>
       </div>
       <div class="sc click" id="cardForgot" onclick="statFilter('forgot')">
@@ -466,6 +479,7 @@ tr.rm:hover td{background:#fff3ec}
       <button class="tab" onclick="switchTab('lv',this)">📅 請假申請明細</button>
       <button class="tab" onclick="switchTab('ov',this)">🗂 加班申請明細</button>
       <button class="tab" onclick="switchTab('fg',this)">🔄 忘刷卡申請明細</button>
+      <button class="tab" onclick="switchTab('trip',this)">🧳 出差申請明細</button>
     </div>
 
     <!-- Tab: 未打卡比對 -->
@@ -477,6 +491,7 @@ tr.rm:hover td{background:#fff3ec}
           <select class="fi" id="absSel" onchange="applyAbs()" style="min-width:160px">
             <option value="">全部狀態</option>
             <option value="已申請請假">已申請請假</option>
+            <option value="已申請出差">已申請出差</option>
             <option value="已申請忘刷卡">已申請忘刷卡</option>
             <option value="未申請忘刷卡">未申請忘刷卡</option>
           </select>
@@ -493,7 +508,7 @@ tr.rm:hover td{background:#fff3ec}
             <th onclick="srt('tblAbs',4)">工作日期</th>
             <th onclick="srt('tblAbs',5)">應刷卡時間</th>
             <th onclick="srt('tblAbs',6)">卡別</th>
-            <th>比對結果</th><th>異常狀態</th><th>請假類型</th><th>請假日期</th><th>未申請忘刷卡</th>
+            <th>比對結果</th><th>異常狀態</th><th>請假/出差類型</th><th>請假/出差日期</th><th>未申請忘刷卡</th>
           </tr></thead><tbody id="bAbs"></tbody></table>
         </div>
       </div>
@@ -601,13 +616,30 @@ tr.rm:hover td{background:#fff3ec}
         </div>
       </div>
     </div>
+
+    <!-- Tab: 出差申請明細 -->
+    <div id="tab-trip" style="display:none">
+      <div class="tw">
+        <div class="tbar">
+          <span class="fil">搜尋：</span>
+          <input class="fi" placeholder="員工編號 / 姓名 / 出差地點" oninput="fgen('tblTrip',this.value)">
+        </div>
+        <div class="ts">
+          <table id="tblTrip"><thead><tr>
+            <th>#</th><th>員工編號</th><th>姓名</th><th>部門</th>
+            <th>出差起始日期</th><th>起始時間</th><th>出差結束日期</th><th>結束時間</th>
+            <th>出差地點</th><th>出差原因</th><th>行程說明</th><th>備註</th><th>來源</th>
+          </tr></thead><tbody id="bTrip"></tbody></table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- EMPTY -->
   <div id="emptyState">
     <div class="empty">
       <div class="ico">📊</div>
-      <p>請上傳打卡資料及請假申請明細（加班申請明細、忘刷卡申請明細選填），然後點擊「執行比對」</p>
+      <p>請上傳打卡資料及請假申請明細（加班、忘刷卡、出差申請明細選填），然後點擊「執行比對」</p>
     </div>
   </div>
 
@@ -960,10 +992,10 @@ function buildResponse(data) {
 </div>
 
 <script>
-let attData=null,leaveData=null,otData=null,forgotData=null,absRows=[],otRows=[];
+let attData=null,leaveData=null,otData=null,forgotData=null,tripData=null,absRows=[],otRows=[];
 let aAbsF='',aOtF='';
-// 記錄四張來源檔名（給比對歷史用）
-let srcNames={attendance:'',leave:'',overtime:'',forgot:''};
+// 記錄五張來源檔名（給比對歷史用）
+let srcNames={attendance:'',leave:'',overtime:'',forgot:'',trip:''};
 // 目前是否正在檢視歷史紀錄（檢視中不重複存檔）
 let viewingHist=false;
 
@@ -982,6 +1014,7 @@ function clearCard(e, n, type){
   else if(type==='leave'){leaveData=null;srcNames.leave='';}
   else if(type==='overtime'){otData=null;srcNames.overtime='';}
   else if(type==='forgot'){forgotData=null;srcNames.forgot='';}
+  else if(type==='trip'){tripData=null;srcNames.trip='';}
   // Reset card UI
   G('name'+n).textContent='點擊或拖曳上傳 .xlsx';
   const s=G('status'+n); s.textContent='尚未載入'; s.className='ups-t';
@@ -1002,6 +1035,7 @@ function processFile(file,type){
     else if(type==='leave'){leaveData=parseLeave(raw);srcNames.leave=file.name;setupCard(2,file.name,leaveData.length)}
     else if(type==='overtime'){otData=parseOT(raw);srcNames.overtime=file.name;setupCard(3,file.name,otData.length)}
     else if(type==='forgot'){forgotData=parseForgot(raw);srcNames.forgot=file.name;setupCard(4,file.name,forgotData.length)}
+    else if(type==='trip'){tripData=parseTrip(raw);srcNames.trip=file.name;setupCard(5,file.name,tripData.length)}
     checkReady();
   };
   r.readAsArrayBuffer(file);
@@ -1030,6 +1064,13 @@ function parseLeave(raw){
   return res;
 }
 function parseOT(raw){
+  let hi=raw.findIndex(r=>String(r[0]).trim()==='員工編號');if(hi<0)hi=6;
+  const h=raw[hi],res=[];
+  for(let i=hi+1;i<raw.length;i++){const r=raw[i];if(r.every(c=>c===''))continue;const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);res.push(o);}
+  return res;
+}
+function parseTrip(raw){
+  // 出差申請明細：表頭列以「員工編號」開頭（與請假/加班格式相同）
   let hi=raw.findIndex(r=>String(r[0]).trim()==='員工編號');if(hi<0)hi=6;
   const h=raw[hi],res=[];
   for(let i=hi+1;i<raw.length;i++){const r=raw[i];if(r.every(c=>c===''))continue;const o={};h.forEach((k,j)=>o[String(k).trim()]=r[j]);res.push(o);}
@@ -1127,6 +1168,20 @@ function runAudit(){
     });
   }
 
+  // Build tripMap: key = 員工編號|日期（出差起訖是日期區間，區間內每一天都算出差）
+  // 小關規定：只要有填出差申請表就算出差，即便主管還沒簽核也算；僅排除「已終止」（=撤單）
+  const tripMap={};
+  if(tripData){
+    tripData.forEach(t=>{
+      const st=String(t['狀態']||t['來源']||'').trim();
+      if(st.includes('已終止'))return;
+      const id=String(t['員工編號']||'').trim();
+      const sd=nd(t['出差起始日期']),ed=nd(t['出差結束日期']);
+      if(!id||!sd)return;
+      dateRange(sd,ed||sd).forEach(d=>{const k=id+'|'+d;if(!tripMap[k])tripMap[k]=[];tripMap[k].push(t);});
+    });
+  }
+
   // Build forgotMap / forgotPendingMap: key = 姓名|日期
   // 步驟1：排除「已終止」（=已撤回的申請）
   // 步驟2：以申請人姓名 + 忘刷卡日期建立 map
@@ -1166,6 +1221,7 @@ function runAudit(){
     const name=String(r['姓名']||'').trim();
     const d=nd(r['工作日期']);
     const ll=lvMap[id+'|'+d]||[];
+    const tl=tripMap[id+'|'+d]||[];
     // Check forgot map by name + date
     const fl=forgotMap[name+'|'+d]||[];
     const fp=forgotPendingMap[name+'|'+d]||[];
@@ -1174,6 +1230,11 @@ function runAudit(){
       as='已申請請假';
       lt=ll.map(l=>l['假勤項目']).join(', ');
       ld=ll.map(l=>nd(l['假勤開始日期'])).join(', ');
+    } else if(tl.length){
+      // 當天在出差期間內 → 沒打卡不算異常
+      as='已申請出差';
+      lt=tl.map(t=>'出差'+(String(t['出差地點']||'').trim()?'（'+String(t['出差地點']).trim()+'）':'')).join(', ');
+      ld=tl.map(t=>{const s=nd(t['出差起始日期']),e=nd(t['出差結束日期']);return e&&e!==s?s+'～'+e:s;}).join(', ');
     } else if(fl.length){
       as='已申請忘刷卡';
       lt='';ld='';
@@ -1207,6 +1268,7 @@ function runAudit(){
 
   // Stats
   const lc=absRows.filter(r=>r._as==='已申請請假').length;
+  const tc=absRows.filter(r=>r._as==='已申請出差').length;
   const fc=absRows.filter(r=>r._as==='已申請忘刷卡').length;
   const pc=absRows.filter(r=>r._as==='已申請忘刷卡'&&r._pending).length; // 其中待主管簽核
   const nc=absRows.filter(r=>r._as==='未申請忘刷卡').length;
@@ -1218,6 +1280,7 @@ function runAudit(){
   S('statTotal',attData.length);
   S('statMiss',absRows.length);
   S('statLeave',lc);
+  S('statTrip',tc);
   S('statForgot',fc);
   S('statNoApp',nc);
   S('statOt',ot);S('statOtNR',onr);S('statOtNA',ona);S('statOtOk',ook);
@@ -1232,11 +1295,12 @@ function runAudit(){
   renderAbs(absRows);renderOt(otRows);renderAtt(attData);renderLv(leaveData);
   if(otData)renderOv(otData);
   if(forgotData)renderFg(forgotData);
+  if(tripData)renderTrip(tripData);
   S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
-  toast(`比對完成 ✓  未打卡 ${absRows.length} 筆（忘刷卡已申請 ${fc} 筆${pc?`，含待主管簽核 ${pc} 筆`:''}｜異常 ${nc} 筆）｜超時 ${ot} 筆`,'success');
+  toast(`比對完成 ✓  未打卡 ${absRows.length} 筆（忘刷卡已申請 ${fc} 筆${pc?`，含待主管簽核 ${pc} 筆`:''}${tc?`｜出差 ${tc} 筆`:''}｜異常 ${nc} 筆）｜超時 ${ot} 筆`,'success');
 
   // 每次比對自動留存歷史（不阻塞畫面）
-  const stats={total:attData.length,miss:absRows.length,leave:lc,forgot:fc,noApp:nc,ot:ot,otNR:onr,otNA:ona,otOk:ook};
+  const stats={total:attData.length,miss:absRows.length,leave:lc,trip:tc,forgot:fc,noApp:nc,ot:ot,otNR:onr,otNA:ona,otOk:ook};
   saveHistory(stats);
 }
 
@@ -1248,6 +1312,8 @@ function renderAbs(rows){
     let sb,rowClass='rm';
     if(r._as==='已申請請假'){
       sb=`<span class="b bl">✓ 已申請請假</span>`;rowClass='';
+    } else if(r._as==='已申請出差'){
+      sb=`<span class="b bl">🧳 已申請出差</span>`;rowClass='';
     } else if(r._as==='已申請忘刷卡' && r._pending){
       sb=`<span class="b by">🔄 已申請忘刷卡（待主管簽核）</span>`;rowClass='';
     } else if(r._as==='已申請忘刷卡'){
@@ -1382,10 +1448,27 @@ function renderFg(rows){
   }).join('');
 }
 
+function renderTrip(rows){
+  const b=G('bTrip');
+  if(!rows||!rows.length){b.innerHTML='<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--muted2)">無出差申請記錄</td></tr>';return;}
+  b.innerHTML=rows.map((r,i)=>`<tr>
+    <td class="mono" style="color:var(--muted2)">${i+1}</td>
+    <td class="mono">${r['員工編號']||''}</td><td style="font-weight:600">${r['姓名']||''}</td>
+    <td>${r['部門']||''}</td><td class="mono">${nd(r['出差起始日期'])}</td>
+    <td class="mono">${r['出差起始時間']||''}</td><td class="mono">${nd(r['出差結束日期'])}</td>
+    <td class="mono">${r['出差結束時間']||''}</td>
+    <td><span class="b bl">${r['出差地點']||''}</span></td>
+    <td style="color:var(--muted)">${r['出差原因']||''}</td>
+    <td style="color:var(--muted)">${r['行程說明']||''}</td>
+    <td style="color:var(--muted)">${r['備註']||''}</td>
+    <td style="color:var(--muted)">${r['來源']||''}</td></tr>`).join('');
+}
+
 // ─── STAT FILTER ───
 const CMAP={
   miss:{id:'cardMiss',cls:'a-red',tab:'audit',sel:'absSel',val:''},
   leave:{id:'cardLeave',cls:'a-blue',tab:'audit',sel:'absSel',val:'已申請請假'},
+  trip:{id:'cardTrip',cls:'a-blue',tab:'audit',sel:'absSel',val:'已申請出差'},
   forgot:{id:'cardForgot',cls:'a-green',tab:'audit',sel:'absSel',val:'已申請忘刷卡'},
   noapp:{id:'cardNoApp',cls:'a-orange',tab:'audit',sel:'absSel',val:'未申請忘刷卡'},
   ot:{id:'cardOt',cls:'a-yellow',tab:'ot',sel:'otSel',val:''},
@@ -1393,13 +1476,13 @@ const CMAP={
   'ot-no-app':{id:'cardOtNA',cls:'a-orange',tab:'ot',sel:'otSel',val:'實際加班-未申請'},
   'ot-ok':{id:'cardOtOk',cls:'a-green',tab:'ot',sel:'otSel',val:'實際加班-已申請'}
 };
-const ABS_CARDS=['cardMiss','cardLeave','cardForgot','cardNoApp'];
+const ABS_CARDS=['cardMiss','cardLeave','cardTrip','cardForgot','cardNoApp'];
 const OT_CARDS=['cardOt','cardOtNR','cardOtNA','cardOtOk'];
 const ALL_CLS=['a-red','a-blue','a-orange','a-green','a-yellow'];
 
 function statFilter(type){
   const cfg=CMAP[type];
-  const isAbs=['miss','leave','forgot','noapp'].includes(type);
+  const isAbs=['miss','leave','trip','forgot','noapp'].includes(type);
   const curF=isAbs?aAbsF:aOtF;
 
   // Toggle off
@@ -1441,7 +1524,7 @@ function fgen(tid,q){
 
 // ─── TAB ───
 function switchTab(name,el){
-  ['audit','ot','att','lv','ov','fg'].forEach(t=>G('tab-'+t).style.display='none');
+  ['audit','ot','att','lv','ov','fg','trip'].forEach(t=>G('tab-'+t).style.display='none');
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   G('tab-'+name).style.display='';
   el.classList.add('active');
@@ -1459,9 +1542,9 @@ function srt(tid,col){
 
 // ─── EXPORT ───
 // 由結果列組出 Excel 工作簿（exportResult 與歷史下載共用）
-function buildWorkbook(absR,otR,forgotR){
+function buildWorkbook(absR,otR,forgotR,tripR){
   const wb=XLSX.utils.book_new();
-  const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假類型','請假日期','未申請忘刷卡']];
+  const ah=[['員工編號','姓名','部門','工作日期','應刷卡時間','卡別','比對結果','異常狀態','請假/出差類型','請假/出差日期','未申請忘刷卡']];
   absR.forEach(r=>ah.push([
     r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['工作日期']),fdt(r['應刷卡時間']),
     r['卡別']||'',r['比對結果']||'',r._pending?(r._as+'（待主管簽核）'):r._as,r._lt,r._ld,
@@ -1476,20 +1559,25 @@ function buildWorkbook(absR,otR,forgotR){
     forgotR.forEach(r=>fh.push([r['序號']||'',r['表單編號']||'',r['申請人']||'',r['部門']||'',r['忘刷卡時間']||r['摘要資訊']||'',r['狀態']||'',r['申請日期']||'']));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fh),'忘刷卡申請明細');
   }
+  if(tripR&&tripR.length){
+    const th=[['員工編號','姓名','部門','出差起始日期','出差起始時間','出差結束日期','出差結束時間','出差地點','出差原因','行程說明','備註','來源']];
+    tripR.forEach(r=>th.push([r['員工編號']||'',r['姓名']||'',r['部門']||'',nd(r['出差起始日期']),r['出差起始時間']||'',nd(r['出差結束日期']),r['出差結束時間']||'',r['出差地點']||'',r['出差原因']||'',r['行程說明']||'',r['備註']||'',r['來源']||'']));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(th),'出差申請明細');
+  }
   return wb;
 }
 function exportResult(){
-  const wb=buildWorkbook(absRows,otRows,forgotData);
+  const wb=buildWorkbook(absRows,otRows,forgotData,tripData);
   XLSX.writeFile(wb,`打卡比對結果_${twStamp().slice(0,10)}.xlsx`);
   toast('比對結果已匯出','success');
 }
 
 // ─── CLEAR ───
 function clearAll(){
-  attData=leaveData=otData=forgotData=null;absRows=otRows=[];aAbsF=aOtF='';
-  srcNames={attendance:'',leave:'',overtime:'',forgot:''};viewingHist=false;exitHistBanner();
+  attData=leaveData=otData=forgotData=tripData=null;absRows=otRows=[];aAbsF=aOtF='';
+  srcNames={attendance:'',leave:'',overtime:'',forgot:'',trip:''};viewingHist=false;exitHistBanner();
   clearCards([...ABS_CARDS,...OT_CARDS]);
-  [1,2,3,4].forEach(n=>{G('name'+n).textContent='點擊或拖曳上傳 .xlsx';const s=G('status'+n);s.textContent='尚未載入';s.className='ups-t';G('card'+n).classList.remove('loaded');});
+  [1,2,3,4,5].forEach(n=>{G('name'+n).textContent='點擊或拖曳上傳 .xlsx';const s=G('status'+n);s.textContent='尚未載入';s.className='ups-t';G('card'+n).classList.remove('loaded');});
   G('dashSection').style.display='none';G('tabsSection').style.display='none';
   G('emptyState').style.display='';G('exportBtn').style.display='none';
   G('runBtn').disabled=true;G('lastUpdate').textContent='';
@@ -2463,6 +2551,7 @@ function renderHistList(recs){
         <span class="b bm">未打卡 ${s.miss??'-'}</span>
         <span class="b bo">未申請忘刷 ${s.noApp??'-'}</span>
         <span class="b bl">已請假 ${s.leave??'-'}</span>
+        <span class="b bl">出差 ${s.trip??'-'}</span>
         <span class="b by">超時 ${s.ot??'-'}</span>
         <span class="b bo">加班未申請 ${s.otNA??'-'}</span>
       </div>
@@ -2479,7 +2568,7 @@ function viewHist(id){
   otRows=(r.ot||[]).slice();
   const s=r.stats||{};
   S('statTotal',s.total??'-');S('statMiss',s.miss??'-');S('statLeave',s.leave??'-');
-  S('statForgot',s.forgot??'-');S('statNoApp',s.noApp??'-');
+  S('statTrip',s.trip??'-');S('statForgot',s.forgot??'-');S('statNoApp',s.noApp??'-');
   S('statOt',s.ot??'-');S('statOtNR',s.otNR??'-');S('statOtNA',s.otNA??'-');S('statOtOk',s.otOk??'-');
   S('tbA',absRows.length);S('tbOT',otRows.length);
   G('dashSection').style.display='';G('tabsSection').style.display='';G('emptyState').style.display='none';
@@ -2487,7 +2576,7 @@ function viewHist(id){
   renderAbs(absRows);renderOt(otRows);
   S('absCnt','共 '+absRows.length+' 筆');S('otCnt','共 '+otRows.length+' 筆');
   // 原始明細四個分頁在歷史檢視下沒有資料
-  ['bAtt','bLv','bOv','bFg'].forEach(tb=>{const e=G(tb);if(e)e.innerHTML='<tr><td colspan="20" style="text-align:center;padding:32px;color:var(--muted2);font-size:12px">歷史紀錄僅保留比對結果，未含原始明細</td></tr>';});
+  ['bAtt','bLv','bOv','bFg','bTrip'].forEach(tb=>{const e=G(tb);if(e)e.innerHTML='<tr><td colspan="20" style="text-align:center;padding:32px;color:var(--muted2);font-size:12px">歷史紀錄僅保留比對結果，未含原始明細</td></tr>';});
   G('lastUpdate').textContent='📜 檢視歷史：'+(r.createdAtTW||'');
   showHistBanner(r);
   // 切到「未打卡比對」分頁
