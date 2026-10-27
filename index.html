@@ -27,9 +27,40 @@
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
+  // 🔒 個資閘門（2026-10-27）：寫進 Firestore 前，所有文字自動拿掉身分證／手機／市話／Email
+  // 本系統所有寫入都走 window._fb.setDoc，所以包在這一個出口就涵蓋全部
+  // 例外：欄位名是 email 或結尾是 By（白名單、操作人本來就要存信箱）；物件的「鍵名」不處理（白名單用信箱當鍵）
+  // 前後不能緊貼數字／小數點：避免把日期區間、小數、單號誤判成電話。規則見 skill「salary-no-pii」，不要拿掉
+  const PII_PATTERNS = [
+    /(?<![A-Za-z0-9])[A-Z][12]\d{8}(?!\d)/g,                       // 身分證
+    /(?<![A-Za-z0-9])[A-Z][A-D89]\d{8}(?!\d)/g,                    // 居留證（新舊式）
+    /(?<![\d.\-])09\d{2}[-\s]?\d{3}[-\s]?\d{3}(?!\d)/g,           // 手機
+    /(?<![\d.\-])\(?0[2-8]\)?[-\s]\d{3,4}[-\s]?\d{4}(?!\d)/g,     // 市話（要有分隔符才算）
+    /[\w.+-]+@[\w-]+\.[\w.-]+/g                                  // Email
+  ];
+  function stripPII(s) {
+    let t = s;
+    PII_PATTERNS.forEach(p => { t = t.replace(p, ''); });
+    if (t === s) return s;
+    return t.replace(/\(\s*\)|（\s*）/g, '').replace(/[ \t]{2,}/g, ' ').trim();
+  }
+  const isPiiExemptKey = key => { const k = String(key || '').split('.').pop(); return k === 'email' || /By$/.test(k); };
+  function deepStripPII(v, key) {
+    if (typeof v === 'string') return isPiiExemptKey(key) ? v : stripPII(v);
+    if (Array.isArray(v)) return v.map(x => deepStripPII(x, key));
+    if (v && Object.getPrototypeOf(v) === Object.prototype) {   // 只處理一般物件，FieldValue／Timestamp 原樣放行
+      const out = {};
+      Object.keys(v).forEach(k => { out[k] = deepStripPII(v[k], k); });
+      return out;
+    }
+    return v;
+  }
+  const setDocSafe = (ref, data, opts) => setDoc(ref, deepStripPII(data), opts);
+  window._piiGate = { stripPII, deepStripPII };   // 線上驗證用
+
   // expose to global scope for non-module scripts
   window._fb = { auth, db, GoogleAuthProvider, signInWithPopup, signOut,
-    onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, deleteDoc };
+    onAuthStateChanged, doc, getDoc, setDoc: setDocSafe, collection, getDocs, deleteDoc };
 
   // Firebase auth state listener
   onAuthStateChanged(auth, async (user) => {
